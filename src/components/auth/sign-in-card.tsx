@@ -3,8 +3,10 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthActions } from "@convex-dev/auth/react";
+import { useMutation } from "convex/react";
 import { toast } from "sonner";
 
+import { api } from "../../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -14,6 +16,7 @@ export function SignInCard() {
   const [mode, setMode] = useState<"signIn" | "signUp">("signIn");
   const [pending, setPending] = useState(false);
   const { signIn } = useAuthActions();
+  const ensureProfile = useMutation(api.profiles.ensureCurrentProfile);
   const router = useRouter();
 
   return (
@@ -34,6 +37,7 @@ export function SignInCard() {
             setPending(true);
             try {
               await signIn("password", formData);
+              await ensureProfile({});
               router.push("/missions");
             } catch (error) {
               const rawMessage =

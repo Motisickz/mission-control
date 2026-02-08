@@ -15,7 +15,7 @@ export function ProfilsView() {
       <Card>
         <CardHeader>
           <CardTitle>Environnement actif</CardTitle>
-          <CardDescription>Profil utilise pour l&apos;espace de travail courant.</CardDescription>
+          <CardDescription>Profil utilisé pour l&apos;espace de travail courant.</CardDescription>
         </CardHeader>
         <CardContent>
           {current ? (

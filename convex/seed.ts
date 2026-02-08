@@ -12,20 +12,20 @@ export const seedDemoData = mutation({
 
     const existingIdeas = await ctx.db.query("ideas").collect();
     if (existingIdeas.length > 0) {
-      return { created: false, reason: "Seed deja present." };
+      return { created: false, reason: "Seed déjà présent." };
     }
 
     const filterId = await ctx.db.insert("calendarFilters", {
-      name: "Operations",
+      name: "Opérations",
       color: "oklch(0.68 0.19 35)",
       ownerProfileId: admin._id,
       isSystem: true,
-      criteria: "Equipe Operations",
+      criteria: "Équipe opérations",
     });
 
     await ctx.db.insert("tasks", {
-      title: "Verifier le suivi journalier",
-      description: "Controler l'avancement des taches prioritaires",
+      title: "Vérifier le suivi journalier",
+      description: "Contrôler l'avancement des tâches prioritaires",
       priority: "urgent",
       status: "in_progress",
       date: new Date().toISOString().slice(0, 10),
@@ -36,14 +36,14 @@ export const seedDemoData = mutation({
       period: "daily",
       checklist: [
         { id: "c1", label: "Lire les notifications", done: true },
-        { id: "c2", label: "Verifier les blocages", done: false },
+        { id: "c2", label: "Vérifier les blocages", done: false },
       ],
       calendarFilterIds: [filterId],
       isRecurringInstance: false,
     });
 
     await ctx.db.insert("tasks", {
-      title: "Preparer reporting hebdomadaire",
+      title: "Préparer reporting hebdomadaire",
       description: "Compiler les KPIs missions",
       priority: "medium",
       status: "todo",
@@ -54,8 +54,8 @@ export const seedDemoData = mutation({
       createdByProfileId: admin._id,
       period: "weekly",
       checklist: [
-        { id: "c3", label: "Exporter donnees", done: false },
-        { id: "c4", label: "Ecrire synthese", done: false },
+        { id: "c3", label: "Exporter données", done: false },
+        { id: "c4", label: "Écrire synthèse", done: false },
       ],
       calendarFilterIds: [filterId],
       isRecurringInstance: false,
@@ -70,7 +70,7 @@ export const seedDemoData = mutation({
 
     await ctx.db.insert("ideas", {
       title: "Template onboarding stagiaire",
-      content: "Creer une checklist standard pour les 10 premiers jours.",
+      content: "Créer une checklist standard pour les 10 premiers jours.",
       authorProfileId: member._id,
       status: "open",
     });

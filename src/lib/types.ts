@@ -29,8 +29,10 @@ export type TaskChecklistItem = {
 export type NewTaskInput = {
   title: string;
   description?: string;
+  note?: string;
   assigneeProfileId: Id<"profiles">;
   date: string;
+  dueDate?: string;
   startTime: string;
   endTime: string;
   priority: TaskPriority;

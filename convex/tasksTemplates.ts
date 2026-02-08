@@ -14,7 +14,7 @@ export const createDailyTemplate = mutation({
   handler: async (ctx, args) => {
     const { profile } = await requireProfile(ctx);
     if (profile.role === "stagiaire" && args.assigneeProfileId !== profile._id) {
-      throw new Error("Non autorise");
+      throw new Error("Non autorisé");
     }
 
     return await ctx.db.insert("taskTemplates", {
@@ -38,7 +38,7 @@ export const generateInstancesForDateRange = mutation({
   handler: async (ctx, args) => {
     const { profile } = await requireProfile(ctx);
     if (profile.role !== "admin") {
-      throw new Error("Action reservee a l'admin");
+      throw new Error("Action réservée à l'admin");
     }
 
     const templates = await ctx.db.query("taskTemplates").collect();

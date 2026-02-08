@@ -19,10 +19,10 @@ export function SignInCard() {
   return (
     <Card className="w-full max-w-md border-border/70 bg-card/95">
       <CardHeader>
-        <CardTitle>{mode === "signIn" ? "Connexion" : "Creer un compte"}</CardTitle>
-        <CardDescription>
-          Authentification Convex avec email et mot de passe.
-        </CardDescription>
+        <CardTitle>{mode === "signIn" ? "Connexion" : "Créer un compte"}</CardTitle>
+          <CardDescription>
+            Authentification Convex avec email et mot de passe.
+          </CardDescription>
       </CardHeader>
       <CardContent>
         <form
@@ -35,8 +35,16 @@ export function SignInCard() {
             try {
               await signIn("password", formData);
               router.push("/missions");
-            } catch {
-              toast.error("Connexion impossible. Verifie les identifiants.");
+            } catch (error) {
+              const rawMessage =
+                error instanceof Error && error.message
+                  ? error.message
+                  : "Connexion impossible.";
+              const message =
+                rawMessage === "Invalid credentials"
+                  ? "Identifiants invalides ou compte déjà existant. Essaie \"Se connecter\"."
+                  : rawMessage;
+              toast.error(message);
             } finally {
               setPending(false);
             }
@@ -59,7 +67,7 @@ export function SignInCard() {
           </div>
 
           <Button className="w-full" type="submit" disabled={pending}>
-            {pending ? "Chargement..." : mode === "signIn" ? "Se connecter" : "Creer mon compte"}
+            {pending ? "Chargement..." : mode === "signIn" ? "Se connecter" : "Créer mon compte"}
           </Button>
 
           <Button
@@ -69,8 +77,8 @@ export function SignInCard() {
             onClick={() => setMode((m) => (m === "signIn" ? "signUp" : "signIn"))}
           >
             {mode === "signIn"
-              ? "Pas encore de compte ? Creer un compte"
-              : "Deja un compte ? Se connecter"}
+              ? "Pas encore de compte ? Créer un compte"
+              : "Déjà un compte ? Se connecter"}
           </Button>
         </form>
       </CardContent>

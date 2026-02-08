@@ -38,6 +38,7 @@ export default defineSchema({
   tasks: defineTable({
     title: v.string(),
     description: v.optional(v.string()),
+    note: v.optional(v.string()),
     priority: v.union(v.literal("urgent"), v.literal("medium"), v.literal("low")),
     status: v.union(
       v.literal("todo"),
@@ -46,6 +47,7 @@ export default defineSchema({
       v.literal("done"),
     ),
     date: v.string(),
+    dueDate: v.optional(v.string()),
     startTime: v.string(),
     endTime: v.string(),
     assigneeProfileId: v.id("profiles"),

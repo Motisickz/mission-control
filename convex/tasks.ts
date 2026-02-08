@@ -10,11 +10,13 @@ export const createTask = mutation({
   args: {
     title: v.string(),
     description: v.optional(v.string()),
+    note: v.optional(v.string()),
     priority: v.union(v.literal("urgent"), v.literal("medium"), v.literal("low")),
     status: v.optional(
       v.union(v.literal("todo"), v.literal("in_progress"), v.literal("blocked"), v.literal("done")),
     ),
     date: v.string(),
+    dueDate: v.optional(v.string()),
     startTime: v.string(),
     endTime: v.string(),
     assigneeProfileId: v.id("profiles"),
@@ -28,15 +30,17 @@ export const createTask = mutation({
   handler: async (ctx, args) => {
     const { profile } = await requireProfile(ctx);
     if (profile.role === "stagiaire" && args.assigneeProfileId !== profile._id) {
-      throw new Error("Non autorise");
+      throw new Error("Non autorisé");
     }
 
     const taskId = await ctx.db.insert("tasks", {
       title: args.title,
       description: args.description,
+      note: args.note,
       priority: args.priority,
       status: args.status ?? "todo",
       date: args.date,
+      dueDate: args.dueDate,
       startTime: args.startTime,
       endTime: args.endTime,
       assigneeProfileId: args.assigneeProfileId,
@@ -52,7 +56,7 @@ export const createTask = mutation({
       await ctx.db.insert("notifications", {
         recipientProfileId: args.assigneeProfileId,
         type: "assigned",
-        title: `Nouvelle tache: ${args.title}`,
+        title: `Nouvelle tâche: ${args.title}`,
       });
     }
 
@@ -65,19 +69,21 @@ export const updateTask = mutation({
     taskId: v.id("tasks"),
     title: v.optional(v.string()),
     description: v.optional(v.string()),
+    note: v.optional(v.string()),
     status: v.optional(v.union(v.literal("todo"), v.literal("in_progress"), v.literal("blocked"), v.literal("done"))),
     priority: v.optional(v.union(v.literal("urgent"), v.literal("medium"), v.literal("low"))),
     date: v.optional(v.string()),
+    dueDate: v.optional(v.string()),
     startTime: v.optional(v.string()),
     endTime: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const { profile } = await requireProfile(ctx);
     const task = await ctx.db.get(args.taskId);
-    if (!task) throw new Error("Tache introuvable");
+    if (!task) throw new Error("Tâche introuvable");
 
     if (!canAccessTask(profile.role, profile._id, task.assigneeProfileId)) {
-      throw new Error("Non autorise");
+      throw new Error("Non autorisé");
     }
 
     const previousStatus = task.status;
@@ -85,9 +91,11 @@ export const updateTask = mutation({
     await ctx.db.patch(args.taskId, {
       title: args.title ?? task.title,
       description: args.description ?? task.description,
+      note: args.note ?? task.note,
       status: args.status ?? task.status,
       priority: args.priority ?? task.priority,
       date: args.date ?? task.date,
+      dueDate: args.dueDate ?? task.dueDate,
       startTime: args.startTime ?? task.startTime,
       endTime: args.endTime ?? task.endTime,
     });
@@ -96,7 +104,7 @@ export const updateTask = mutation({
       await ctx.db.insert("notifications", {
         recipientProfileId: task.assigneeProfileId,
         type: "status_changed",
-        title: `Statut mis a jour: ${task.title}`,
+        title: `Statut mis à jour: ${task.title}`,
       });
     }
   },
@@ -110,10 +118,10 @@ export const toggleChecklistItem = mutation({
   handler: async (ctx, args) => {
     const { profile } = await requireProfile(ctx);
     const task = await ctx.db.get(args.taskId);
-    if (!task) throw new Error("Tache introuvable");
+    if (!task) throw new Error("Tâche introuvable");
 
     if (!canAccessTask(profile.role, profile._id, task.assigneeProfileId)) {
-      throw new Error("Non autorise");
+      throw new Error("Non autorisé");
     }
 
     const checklist = task.checklist.map((item) =>

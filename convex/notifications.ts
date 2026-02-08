@@ -22,7 +22,7 @@ export const markRead = mutation({
     const notification = await ctx.db.get(args.notificationId);
     if (!notification) throw new Error("Notification introuvable");
     if (notification.recipientProfileId !== profile._id) {
-      throw new Error("Non autorise");
+      throw new Error("Non autorisé");
     }
     await ctx.db.patch(args.notificationId, { readAt: Date.now() });
   },

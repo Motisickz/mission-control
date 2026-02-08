@@ -17,8 +17,8 @@ export function IdeesView() {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Nouvelle idee</CardTitle>
-          <CardDescription>Capture rapide des suggestions d&apos;amelioration.</CardDescription>
+          <CardTitle>Nouvelle idée</CardTitle>
+          <CardDescription>Capture rapide des suggestions d&apos;amélioration.</CardDescription>
         </CardHeader>
         <CardContent>
           <form
@@ -42,7 +42,7 @@ export function IdeesView() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Backlog idees</CardTitle>
+          <CardTitle>Backlog idées</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           {(ideas ?? []).map((idea) => (

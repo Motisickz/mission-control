@@ -44,10 +44,10 @@ export const updateIdea = mutation({
   handler: async (ctx, args) => {
     const { profile } = await requireProfile(ctx);
     const idea = await ctx.db.get(args.ideaId);
-    if (!idea) throw new Error("Idee introuvable");
+    if (!idea) throw new Error("Idée introuvable");
 
     if (profile.role !== "admin" && idea.authorProfileId !== profile._id) {
-      throw new Error("Non autorise");
+      throw new Error("Non autorisé");
     }
 
     await ctx.db.patch(args.ideaId, {

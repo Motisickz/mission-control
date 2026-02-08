@@ -23,7 +23,7 @@ export async function requireProfile(ctx: QueryCtx | MutationCtx) {
 export async function requireAdmin(ctx: QueryCtx | MutationCtx) {
   const { userId, profile } = await requireProfile(ctx);
   if (profile.role !== "admin") {
-    throw new Error("Action reservee a l'admin");
+    throw new Error("Action réservée à l'admin");
   }
   return { userId, profile };
 }

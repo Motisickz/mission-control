@@ -24,6 +24,7 @@ import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { DatePillPicker } from "@/components/ui/date-pill-picker";
 
 type TaskFilter = "all" | "urgent" | "mine";
 
@@ -198,11 +199,11 @@ export function MissionsView() {
                 </div>
                 <div className="space-y-1">
                   <Label>Date mission</Label>
-                  <Input name="date" type="date" defaultValue={todayIsoDate()} />
+                  <DatePillPicker name="date" defaultValue={todayIsoDate()} />
                 </div>
                 <div className="space-y-1">
                   <Label>Échéance</Label>
-                  <Input name="dueDate" type="date" defaultValue={todayIsoDate()} />
+                  <DatePillPicker name="dueDate" defaultValue={todayIsoDate()} />
                 </div>
                 <div className="space-y-1">
                   <Label>Début</Label>

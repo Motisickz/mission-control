@@ -22,6 +22,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import { DatePillPicker } from "@/components/ui/date-pill-picker";
 
 type CalendarView = "day" | "week" | "month" | "year";
 
@@ -343,11 +344,11 @@ export function CalendrierView() {
                 </div>
                 <div className="space-y-1">
                   <Label>Date mission</Label>
-                  <Input name="date" type="date" defaultValue={toIsoDate(new Date())} />
+                  <DatePillPicker name="date" defaultValue={toIsoDate(new Date())} />
                 </div>
                 <div className="space-y-1">
                   <Label>Échéance</Label>
-                  <Input name="dueDate" type="date" defaultValue={toIsoDate(new Date())} />
+                  <DatePillPicker name="dueDate" defaultValue={toIsoDate(new Date())} />
                 </div>
                 <div className="space-y-1">
                   <Label>Début</Label>

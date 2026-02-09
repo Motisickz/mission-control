@@ -5,5 +5,5 @@ export default async function Home() {
   if (await isAuthenticatedNextjs()) {
     redirect("/missions");
   }
-  redirect("/connexion");
+  redirect("/apercu");
 }

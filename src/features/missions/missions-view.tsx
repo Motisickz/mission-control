@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { CalendarPlus2, CircleAlert, CircleCheckBig, Clock3, Filter, Plus } from "lucide-react";
+import { CalendarPlus2, CircleAlert, CircleCheckBig, Clock3, Plus } from "lucide-react";
 import { useMutation, useQuery } from "convex/react";
 
 import { api } from "../../../convex/_generated/api";
@@ -121,7 +121,6 @@ export function MissionsView() {
                 className={cn("h-8 rounded-md px-3 text-xs", taskFilter !== item.key && "text-muted-foreground")}
                 onClick={() => setTaskFilter(item.key as TaskFilter)}
               >
-                <Filter className="mr-1.5 h-3.5 w-3.5" />
                 {item.label}
               </Button>
             ))}

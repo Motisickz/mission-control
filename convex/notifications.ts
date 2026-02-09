@@ -27,3 +27,23 @@ export const markRead = mutation({
     await ctx.db.patch(args.notificationId, { readAt: Date.now() });
   },
 });
+
+export const markAllRead = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const { profile } = await requireProfile(ctx);
+    const notifications = await ctx.db
+      .query("notifications")
+      .withIndex("by_recipient", (q) => q.eq("recipientProfileId", profile._id))
+      .collect();
+
+    const unread = notifications.filter((notification) => !notification.readAt);
+    await Promise.all(
+      unread.map((notification) =>
+        ctx.db.patch(notification._id, { readAt: Date.now() }),
+      ),
+    );
+
+    return { updated: unread.length };
+  },
+});

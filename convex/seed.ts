@@ -1,8 +1,11 @@
 import { mutation } from "./_generated/server";
+import { requireAdmin } from "./lib/auth";
 
 export const seedDemoData = mutation({
   args: {},
   handler: async (ctx) => {
+    await requireAdmin(ctx);
+
     const profiles = await ctx.db.query("profiles").collect();
     if (profiles.length < 2) {
       return { created: false, reason: "Pas assez de profils pour seed (min 2)." };

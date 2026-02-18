@@ -310,7 +310,7 @@ export const generateSuggestionForEvent = action({
       throw new Error("Suggestion recente: attend 5 minutes ou utilise 'Regenerer'.");
     }
 
-    const model = process.env.OPENAI_MODEL?.trim() || "gpt-4o-mini";
+    const model = process.env.OPENAI_MODEL?.trim() || "gpt-5.2";
     const promptVersion = "v1";
     const inputSummary = buildInputSummary(event);
     const prompt = buildPrompt(event);

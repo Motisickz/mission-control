@@ -186,3 +186,32 @@ export const inspectWorkspaceState = internalMutation({
     };
   },
 });
+
+export const migrateSuggestionModelName = internalMutation({
+  args: {
+    fromModel: v.string(),
+    toModel: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const fromModel = args.fromModel.trim();
+    const toModel = args.toModel.trim();
+    if (!fromModel) throw new Error("fromModel ne peut pas etre vide.");
+    if (!toModel) throw new Error("toModel ne peut pas etre vide.");
+
+    const suggestions = await ctx.db.query("editorialEventAiSuggestions").collect();
+    let scanned = 0;
+    let updated = 0;
+    for (const suggestion of suggestions) {
+      scanned += 1;
+      if (suggestion.model === fromModel) {
+        await ctx.db.patch(suggestion._id, {
+          model: toModel,
+          updatedAt: Date.now(),
+        });
+        updated += 1;
+      }
+    }
+
+    return { scanned, updated, fromModel, toModel };
+  },
+});

@@ -2,6 +2,53 @@ import { getAuthUserId } from "@convex-dev/auth/server";
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import { requireProfile } from "./lib/auth";
+import { getAccessProfileIds } from "./lib/sharedProfiles";
+
+const SHARED_CONTACT_IDENTIFIER = "contact@hedayatmusic.com";
+const SHARED_CONTACT_PERSONA_NAMES: Record<string, string> = {
+  louise: "Louise",
+  anissa: "Anissa",
+};
+const SHARED_CONTACT_ALIAS_NAMES: Record<string, string> = {
+  "contact+louise@hedayatmusic.com": "Louise",
+  "contact+anissa@hedayatmusic.com": "Anissa",
+};
+
+function resolveProfileIdentity(normalizedLogin?: string) {
+  if (!normalizedLogin) {
+    return {
+      profileIdentifier: undefined,
+      displayName: undefined,
+      isSharedContactAlias: false,
+    };
+  }
+
+  const prefix = `${SHARED_CONTACT_IDENTIFIER}#`;
+  const aliasPersona = SHARED_CONTACT_ALIAS_NAMES[normalizedLogin];
+  if (aliasPersona) {
+    return {
+      profileIdentifier: SHARED_CONTACT_IDENTIFIER,
+      displayName: aliasPersona,
+      isSharedContactAlias: true,
+    };
+  }
+
+  if (!normalizedLogin.startsWith(prefix)) {
+    return {
+      profileIdentifier: normalizedLogin,
+      displayName: normalizedLogin,
+      isSharedContactAlias: false,
+    };
+  }
+
+  const personaKey = normalizedLogin.slice(prefix.length).trim().toLowerCase();
+  const personaName = SHARED_CONTACT_PERSONA_NAMES[personaKey] ?? personaKey ?? "Membre";
+  return {
+    profileIdentifier: SHARED_CONTACT_IDENTIFIER,
+    displayName: personaName,
+    isSharedContactAlias: true,
+  };
+}
 
 export const ensureCurrentProfile = mutation({
   args: {
@@ -13,21 +60,69 @@ export const ensureCurrentProfile = mutation({
 
     const authUser = await ctx.db.get(userId);
     if (!authUser) throw new Error("Utilisateur absent");
+    const normalizedLogin =
+      typeof authUser.email === "string" && authUser.email.trim().length > 0
+        ? authUser.email.trim().toLowerCase()
+        : undefined;
+    const identity = resolveProfileIdentity(normalizedLogin);
 
     const existing = await ctx.db
       .query("profiles")
       .withIndex("by_auth_user_id", (q) => q.eq("authUserId", userId))
       .first();
 
-    if (existing) return existing;
+    if (existing) {
+      const nextEmail =
+        identity.isSharedContactAlias && identity.profileIdentifier
+          ? identity.profileIdentifier
+          : existing.email;
+      const nextDisplayName =
+        args.displayName ??
+        (identity.isSharedContactAlias && identity.displayName
+          ? identity.displayName
+          : existing.displayName);
 
-    const count = (await ctx.db.query("profiles").collect()).length;
-    const role = count === 0 ? "admin" : "stagiaire";
+      if (nextEmail !== existing.email || nextDisplayName !== existing.displayName) {
+        await ctx.db.patch(existing._id, {
+          email: nextEmail,
+          displayName: nextDisplayName,
+        });
+        const patched = await ctx.db.get(existing._id);
+        if (patched) return patched;
+      }
+      return existing;
+    }
+
+    if (identity.isSharedContactAlias && identity.profileIdentifier && identity.displayName) {
+      const existingSharedProfile = await ctx.db
+        .query("profiles")
+        .filter((q) =>
+          q.and(
+            q.eq(q.field("email"), identity.profileIdentifier),
+            q.eq(q.field("displayName"), identity.displayName),
+          ),
+        )
+        .first();
+      if (existingSharedProfile) {
+        if (existingSharedProfile.authUserId !== userId) {
+          await ctx.db.patch(existingSharedProfile._id, { authUserId: userId });
+        }
+        const patched = await ctx.db.get(existingSharedProfile._id);
+        if (patched) return patched;
+      }
+    }
+
+    const existingAdmin = await ctx.db
+      .query("profiles")
+      .filter((q) => q.eq(q.field("role"), "admin"))
+      .first();
+    const role = existingAdmin ? "stagiaire" : "admin";
 
     const profileId = await ctx.db.insert("profiles", {
       authUserId: userId,
-      email: authUser.email ?? "",
-      displayName: args.displayName ?? authUser.name ?? authUser.email ?? "Utilisateur",
+      email: identity.profileIdentifier ?? normalizedLogin ?? `invite+${userId}@local.invalid`,
+      displayName:
+        args.displayName ?? identity.displayName ?? authUser.name ?? normalizedLogin ?? "Utilisateur",
       role,
       timezone: "Europe/Paris",
     });
@@ -55,7 +150,23 @@ export const listVisibleProfiles = query({
     if (profile.role === "admin") {
       return await ctx.db.query("profiles").collect();
     }
-    return [profile];
+    const accessProfileIds = await getAccessProfileIds(ctx, profile);
+    const allProfiles = await ctx.db.query("profiles").collect();
+    return allProfiles.filter((item) => accessProfileIds.includes(item._id));
+  },
+});
+
+export const listDirectoryProfiles = query({
+  args: {},
+  handler: async (ctx) => {
+    await requireProfile(ctx);
+    const profiles = await ctx.db.query("profiles").collect();
+    return profiles.sort((a, b) => {
+      if (a.displayName !== b.displayName) {
+        return a.displayName.localeCompare(b.displayName, "fr");
+      }
+      return a.email.localeCompare(b.email, "fr");
+    });
   },
 });
 

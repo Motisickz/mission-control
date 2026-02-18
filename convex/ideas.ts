@@ -1,6 +1,7 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { requireProfile } from "./lib/auth";
+import { getAccessProfileIds } from "./lib/sharedProfiles";
 
 export const createIdea = mutation({
   args: {
@@ -22,13 +23,22 @@ export const listIdeas = query({
   args: {},
   handler: async (ctx) => {
     const { profile } = await requireProfile(ctx);
+    const accessProfileIds = await getAccessProfileIds(ctx, profile);
     if (profile.role === "admin") {
       return await ctx.db.query("ideas").collect();
     }
-    return await ctx.db
-      .query("ideas")
-      .withIndex("by_author", (q) => q.eq("authorProfileId", profile._id))
-      .collect();
+    const items = (
+      await Promise.all(
+        accessProfileIds.map((profileId) =>
+          ctx.db
+            .query("ideas")
+            .withIndex("by_author", (q) => q.eq("authorProfileId", profileId))
+            .collect(),
+        ),
+      )
+    ).flat();
+    const byId = new Map(items.map((idea) => [idea._id, idea]));
+    return [...byId.values()];
   },
 });
 
@@ -43,10 +53,11 @@ export const updateIdea = mutation({
   },
   handler: async (ctx, args) => {
     const { profile } = await requireProfile(ctx);
+    const accessProfileIds = await getAccessProfileIds(ctx, profile);
     const idea = await ctx.db.get(args.ideaId);
     if (!idea) throw new Error("Idée introuvable");
 
-    if (profile.role !== "admin" && idea.authorProfileId !== profile._id) {
+    if (profile.role !== "admin" && !accessProfileIds.includes(idea.authorProfileId)) {
       throw new Error("Non autorisé");
     }
 

@@ -8,6 +8,7 @@ const isAuthPage = createRouteMatcher(["/connexion"]);
 const isProtectedRoute = createRouteMatcher([
   "/missions(.*)",
   "/calendrier(.*)",
+  "/communication(.*)",
   "/profils(.*)",
   "/idees(.*)",
   "/notifications(.*)",

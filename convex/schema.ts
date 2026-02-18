@@ -27,7 +27,21 @@ export default defineSchema({
     description: v.optional(v.string()),
     startTime: v.string(),
     endTime: v.string(),
-    priority: v.union(v.literal("urgent"), v.literal("medium"), v.literal("low")),
+    templateType: v.optional(v.union(v.literal("daily_block"), v.literal("weekly_reminder"))),
+    weekday: v.optional(
+      v.union(
+        v.literal("mon"),
+        v.literal("tue"),
+        v.literal("wed"),
+        v.literal("thu"),
+        v.literal("fri"),
+        v.literal("sat"),
+        v.literal("sun"),
+      ),
+    ),
+    startDate: v.optional(v.string()),
+    endDate: v.optional(v.string()),
+    priority: v.union(v.literal("urgent"), v.literal("high"), v.literal("medium"), v.literal("low")),
     assigneeProfileId: v.id("profiles"),
     createdByProfileId: v.id("profiles"),
     active: v.boolean(),
@@ -35,11 +49,23 @@ export default defineSchema({
     .index("by_assignee", ["assigneeProfileId"])
     .index("by_creator", ["createdByProfileId"]),
 
+  boardColumns: defineTable({
+    name: v.string(),
+    order: v.number(),
+  }).index("by_order", ["order"]),
+
   tasks: defineTable({
     title: v.string(),
+    type: v.optional(v.union(v.literal("routine"), v.literal("exception"), v.literal("event"))),
     description: v.optional(v.string()),
     note: v.optional(v.string()),
-    priority: v.union(v.literal("urgent"), v.literal("medium"), v.literal("low")),
+    notes: v.optional(v.string()),
+    priority: v.union(
+      v.literal("urgent"),
+      v.literal("high"),
+      v.literal("medium"),
+      v.literal("low"),
+    ),
     status: v.union(
       v.literal("todo"),
       v.literal("in_progress"),
@@ -51,20 +77,39 @@ export default defineSchema({
     startTime: v.string(),
     endTime: v.string(),
     assigneeProfileId: v.id("profiles"),
+    assigneeProfileIds: v.optional(v.array(v.id("profiles"))),
+    columnId: v.optional(v.id("boardColumns")),
+    order: v.optional(v.number()),
+    tags: v.optional(v.array(v.string())),
     createdByProfileId: v.id("profiles"),
+    createdAt: v.optional(v.number()),
+    updatedAt: v.optional(v.number()),
     period: v.union(v.literal("daily"), v.literal("weekly"), v.literal("monthly"), v.literal("none")),
+    entryType: v.optional(
+      v.union(
+        v.literal("task"),
+        v.literal("meeting"),
+        v.literal("event"),
+        v.literal("daily_block"),
+      ),
+    ),
     checklist: v.array(
       v.object({
         id: v.string(),
         label: v.string(),
+        text: v.optional(v.string()),
         done: v.boolean(),
       }),
     ),
+    commentsCount: v.optional(v.number()),
     calendarFilterIds: v.array(v.id("calendarFilters")),
     isRecurringInstance: v.boolean(),
     templateId: v.optional(v.id("taskTemplates")),
   })
     .index("by_assignee", ["assigneeProfileId"])
+    .index("by_type", ["type"])
+    .index("by_type_column_order", ["type", "columnId", "order"])
+    .index("by_column_order", ["columnId", "order"])
     .index("by_date", ["date"])
     .index("by_assignee_date", ["assigneeProfileId", "date"])
     .index("by_period", ["period"]),
@@ -99,4 +144,66 @@ export default defineSchema({
     done: v.number(),
     progress: v.number(),
   }).index("by_profile_period", ["profileId", "period"]),
+
+  editorialEvents: defineTable({
+    title: v.string(),
+    category: v.union(v.literal("marronnier"), v.literal("soldes"), v.literal("interne")),
+    startDate: v.string(), // YYYY-MM-DD
+    endDate: v.optional(v.string()), // YYYY-MM-DD
+    prepStartDate: v.string(), // YYYY-MM-DD
+    priority: v.union(v.literal("faible"), v.literal("moyen"), v.literal("eleve")),
+    ownerProfileId: v.id("profiles"),
+    backupOwnerProfileId: v.optional(v.id("profiles")),
+    status: v.union(
+      v.literal("a_preparer"),
+      v.literal("en_creation"),
+      v.literal("programme"),
+      v.literal("publie"),
+      v.literal("rex"),
+    ),
+    notes: v.optional(v.string()),
+    autoCreateTemplateTasks: v.boolean(),
+    templateAppliedAt: v.optional(v.string()), // YYYY-MM-DD (Paris)
+  })
+    .index("by_startDate", ["startDate"])
+    .index("by_prepStartDate", ["prepStartDate"])
+    .index("by_owner", ["ownerProfileId"])
+    .index("by_owner_prepStartDate", ["ownerProfileId", "prepStartDate"]),
+
+  communicationTasks: defineTable({
+    eventId: v.id("editorialEvents"),
+    title: v.string(),
+    assigneeProfileId: v.id("profiles"),
+    dueDate: v.string(), // YYYY-MM-DD
+    status: v.union(v.literal("todo"), v.literal("doing"), v.literal("done")),
+    checklist: v.optional(
+      v.array(
+        v.object({
+          id: v.string(),
+          label: v.string(),
+          done: v.boolean(),
+        }),
+      ),
+    ),
+    comments: v.optional(v.string()),
+    createdByProfileId: v.id("profiles"),
+  })
+    .index("by_event", ["eventId"])
+    .index("by_dueDate", ["dueDate"])
+    .index("by_assignee_dueDate", ["assigneeProfileId", "dueDate"]),
+
+  editorialEventAiSuggestions: defineTable({
+    eventId: v.id("editorialEvents"),
+    createdByProfileId: v.id("profiles"),
+    createdAt: v.number(), // ms timestamp
+    updatedAt: v.number(), // ms timestamp
+    status: v.union(v.literal("ready"), v.literal("generating"), v.literal("error")),
+    model: v.string(),
+    promptVersion: v.string(),
+    inputSummary: v.string(),
+    resultJson: v.string(),
+    errorMessage: v.optional(v.string()),
+  })
+    .index("by_event", ["eventId"])
+    .index("by_event_updatedAt", ["eventId", "updatedAt"]),
 });

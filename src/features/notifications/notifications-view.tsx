@@ -1,14 +1,19 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Bell, BellRing, CheckCircle2, CircleAlert, Inbox, UserPlus2 } from "lucide-react";
+import { Bell, BellRing, CheckCircle2, CircleAlert, Inbox, Plus, UserPlus2 } from "lucide-react";
 import { useMutation, useQuery } from "convex/react";
 import { toast } from "sonner";
 import { api } from "../../../convex/_generated/api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 
 type NotificationFilter = "all" | "unread" | "read";
@@ -45,9 +50,15 @@ function formatTimeAgo(ts: number) {
 
 export function NotificationsView() {
   const [filter, setFilter] = useState<NotificationFilter>("all");
+  const [pushOpen, setPushOpen] = useState(false);
+  const [pushType, setPushType] = useState<NotificationKind>("assigned");
+  const [recipientProfileId, setRecipientProfileId] = useState<string>("");
   const notifications = useQuery(api.notifications.listForCurrentUser);
+  const profiles = useQuery(api.profiles.listVisibleProfiles);
+  const currentProfile = useQuery(api.profiles.getCurrentProfile);
   const markRead = useMutation(api.notifications.markRead);
   const markAllRead = useMutation(api.notifications.markAllRead);
+  const pushNotification = useMutation(api.notifications.pushNotification);
 
   const allNotifications = useMemo(() => notifications ?? [], [notifications]);
   const unreadCount = useMemo(
@@ -62,6 +73,9 @@ export function NotificationsView() {
     if (filter === "read") return sorted.filter((n) => !!n.readAt);
     return sorted;
   }, [allNotifications, filter]);
+
+  const effectiveRecipientProfileId =
+    recipientProfileId || currentProfile?._id || profiles?.[0]?._id || "";
 
   return (
     <div className="space-y-6">
@@ -94,6 +108,94 @@ export function NotificationsView() {
             >
               Tout marquer comme lu
             </Button>
+
+            <Dialog open={pushOpen} onOpenChange={setPushOpen}>
+              <DialogTrigger asChild>
+                <Button variant="secondary">
+                  <Plus className="mr-1.5 h-4 w-4" />
+                  Ajouter
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-xl">
+                <DialogHeader>
+                  <DialogTitle>Pousser une notification</DialogTitle>
+                  <DialogDescription>
+                    Envoie un signal ciblé dans le centre de notifications d&apos;un membre.
+                  </DialogDescription>
+                </DialogHeader>
+
+                <form
+                  className="grid gap-3"
+                  onSubmit={async (event) => {
+                    event.preventDefault();
+                    const formEl = event.currentTarget;
+                    const form = new FormData(formEl);
+                    if (!effectiveRecipientProfileId) return;
+
+                    try {
+                      await pushNotification({
+                        recipientProfileId: effectiveRecipientProfileId as never,
+                        type: pushType,
+                        title: String(form.get("title") ?? ""),
+                        payload: String(form.get("payload") ?? ""),
+                      });
+                      toast.success("Notification envoyée.");
+                      formEl.reset();
+                      setRecipientProfileId("");
+                      setPushType("assigned");
+                      setPushOpen(false);
+                    } catch (error) {
+                      const message =
+                        error instanceof Error ? error.message : "Impossible d'envoyer cette notification.";
+                      toast.error(message);
+                    }
+                  }}
+                >
+                  <div className="space-y-1">
+                    <Label>Destinataire</Label>
+                    <input type="hidden" name="recipientProfileId" value={effectiveRecipientProfileId} />
+                    <Select value={effectiveRecipientProfileId} onValueChange={setRecipientProfileId} required>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Sélectionner un membre" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {(profiles ?? []).map((profile) => (
+                          <SelectItem key={profile._id} value={profile._id}>
+                            {profile.displayName}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-1">
+                    <Label>Type</Label>
+                    <Select value={pushType} onValueChange={(value) => setPushType(value as NotificationKind)}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="assigned">Nouvelle assignation</SelectItem>
+                        <SelectItem value="status_changed">Mise à jour</SelectItem>
+                        <SelectItem value="overdue">Échéance critique</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-1">
+                    <Label>Titre</Label>
+                    <Input name="title" required placeholder="Ex: Tâche prioritaire à valider" />
+                  </div>
+
+                  <div className="space-y-1">
+                    <Label>Message complémentaire</Label>
+                    <Textarea name="payload" placeholder="Contexte optionnel, lien, action attendue..." />
+                  </div>
+
+                  <Button type="submit" className="w-full">Envoyer la notification</Button>
+                </form>
+              </DialogContent>
+            </Dialog>
           </CardContent>
         </Card>
 

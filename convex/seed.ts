@@ -28,6 +28,7 @@ export const seedDemoData = mutation({
 
     await ctx.db.insert("tasks", {
       title: "Vérifier le suivi journalier",
+      type: "exception",
       description: "Contrôler l'avancement des tâches prioritaires",
       priority: "urgent",
       status: "in_progress",
@@ -35,18 +36,24 @@ export const seedDemoData = mutation({
       startTime: "09:00",
       endTime: "10:00",
       assigneeProfileId: admin._id,
+      assigneeProfileIds: [admin._id],
       createdByProfileId: admin._id,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
       period: "daily",
       checklist: [
         { id: "c1", label: "Lire les notifications", done: true },
         { id: "c2", label: "Vérifier les blocages", done: false },
       ],
+      commentsCount: 0,
+      tags: [],
       calendarFilterIds: [filterId],
       isRecurringInstance: false,
     });
 
     await ctx.db.insert("tasks", {
       title: "Préparer reporting hebdomadaire",
+      type: "exception",
       description: "Compiler les KPIs missions",
       priority: "medium",
       status: "todo",
@@ -54,12 +61,17 @@ export const seedDemoData = mutation({
       startTime: "14:00",
       endTime: "15:00",
       assigneeProfileId: member._id,
+      assigneeProfileIds: [member._id],
       createdByProfileId: admin._id,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
       period: "weekly",
       checklist: [
         { id: "c3", label: "Exporter données", done: false },
         { id: "c4", label: "Écrire synthèse", done: false },
       ],
+      commentsCount: 0,
+      tags: [],
       calendarFilterIds: [filterId],
       isRecurringInstance: false,
     });

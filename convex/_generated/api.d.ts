@@ -24,6 +24,7 @@ import type * as ideas from "../ideas.js";
 import type * as lib_auth from "../lib/auth.js";
 import type * as lib_sharedProfiles from "../lib/sharedProfiles.js";
 import type * as missions from "../missions.js";
+import type * as missionsTables from "../missionsTables.js";
 import type * as notifications from "../notifications.js";
 import type * as profiles from "../profiles.js";
 import type * as seed from "../seed.js";
@@ -54,6 +55,7 @@ declare const fullApi: ApiFromModules<{
   "lib/auth": typeof lib_auth;
   "lib/sharedProfiles": typeof lib_sharedProfiles;
   missions: typeof missions;
+  missionsTables: typeof missionsTables;
   notifications: typeof notifications;
   profiles: typeof profiles;
   seed: typeof seed;

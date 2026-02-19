@@ -11,6 +11,8 @@ const APP_TABLES_TO_WIPE = [
   "missionSnapshots",
   "notifications",
   "ideas",
+  "missedCalls",
+  "showNoShow",
   "tasks",
   "boardColumns",
   "taskTemplates",

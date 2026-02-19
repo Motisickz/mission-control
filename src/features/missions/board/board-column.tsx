@@ -2,7 +2,7 @@ import { useDroppable } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type { Id } from "../../../../convex/_generated/dataModel";
-import { GripVertical, MoreHorizontal, PencilLine } from "lucide-react";
+import { GripVertical, MoreHorizontal, PencilLine, Plus } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import type { BoardColumnDoc, BoardProfileDoc, BoardTaskDoc } from "./board-types";
@@ -166,6 +166,17 @@ export function BoardColumn({
         </div>
         <div className="flex items-center gap-1">
           <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">{tasks.length}</span>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7"
+            onClick={() => setAddCardSignal((value) => value + 1)}
+            onPointerDown={(event) => event.stopPropagation()}
+            title="Ajouter une carte"
+          >
+            <Plus className="h-4 w-4" />
+            <span className="sr-only">Ajouter une carte</span>
+          </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
@@ -187,9 +198,6 @@ export function BoardColumn({
               >
                 <PencilLine className="h-4 w-4" />
                 Renommer la liste
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setAddCardSignal((value) => value + 1)}>
-                Ajouter une carte
               </DropdownMenuItem>
 
               <DropdownMenuSub>
@@ -242,6 +250,12 @@ export function BoardColumn({
           isOver && "bg-primary/10",
         )}
       >
+        <CreateCardInline
+          onCreate={(title) => onCreateCard(column._id, title)}
+          openSignal={addCardSignal}
+          hideClosedTrigger
+        />
+
         <SortableContext items={tasks.map((task) => task._id)} strategy={verticalListSortingStrategy}>
           {tasks.map((task) => (
             <BoardCard
@@ -253,13 +267,6 @@ export function BoardColumn({
             />
           ))}
         </SortableContext>
-      </div>
-
-      <div className="mt-3 border-t border-border/70 pt-2">
-        <CreateCardInline
-          onCreate={(title) => onCreateCard(column._id, title)}
-          openSignal={addCardSignal}
-        />
       </div>
     </section>
   );

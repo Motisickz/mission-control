@@ -14,6 +14,7 @@ import {
   Sheet,
   SheetContent,
   SheetDescription,
+  SheetFooter,
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
@@ -155,13 +156,13 @@ export function CardDetailDrawer({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-full gap-0 overflow-y-auto sm:max-w-2xl" side="right">
+      <SheetContent className="w-full gap-0 sm:max-w-2xl" side="right">
         <SheetHeader className="border-b border-border/70">
           <SheetTitle>Détail carte</SheetTitle>
           <SheetDescription>Édition rapide du contenu, checklist et metadata.</SheetDescription>
         </SheetHeader>
 
-        <div className="space-y-5 p-4">
+        <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-4">
           <section className="space-y-3 rounded-xl border border-border/70 p-3">
             <div className="space-y-1">
               <Label>Titre</Label>
@@ -375,34 +376,35 @@ export function CardDetailDrawer({
             </form>
           </section>
 
-          <div className="flex items-center justify-end gap-2">
-            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={saving}>
-              Fermer
-            </Button>
-            <Button
-              type="button"
-              disabled={saving || title.trim().length === 0}
-              onClick={async () => {
-                setSaving(true);
-                try {
-                  await onSave(task._id, {
-                    title: title.trim(),
-                    description: description.trim() ? description.trim() : null,
-                    notes: notes.trim() ? notes.trim() : null,
-                    dueDate: dueDate || null,
-                    priority,
-                    assigneeProfileIds: assigneeIds.length > 0 ? assigneeIds : [task.assigneeProfileId],
-                    tags,
-                  });
-                } finally {
-                  setSaving(false);
-                }
-              }}
-            >
-              Enregistrer
-            </Button>
-          </div>
         </div>
+
+        <SheetFooter className="border-t border-border/70 sm:flex-row sm:justify-end">
+          <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={saving}>
+            Fermer
+          </Button>
+          <Button
+            type="button"
+            disabled={saving || title.trim().length === 0}
+            onClick={async () => {
+              setSaving(true);
+              try {
+                await onSave(task._id, {
+                  title: title.trim(),
+                  description: description.trim() ? description.trim() : null,
+                  notes: notes.trim() ? notes.trim() : null,
+                  dueDate: dueDate || null,
+                  priority,
+                  assigneeProfileIds: assigneeIds.length > 0 ? assigneeIds : [task.assigneeProfileId],
+                  tags,
+                });
+              } finally {
+                setSaving(false);
+              }
+            }}
+          >
+            Enregistrer
+          </Button>
+        </SheetFooter>
       </SheetContent>
     </Sheet>
   );

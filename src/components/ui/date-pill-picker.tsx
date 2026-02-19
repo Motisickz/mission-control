@@ -23,28 +23,42 @@ function toIsoDate(date: Date) {
 export function DatePillPicker({
   name,
   defaultValue,
+  value,
+  onValueChange,
+  compact,
 }: {
-  name: string;
-  defaultValue: string;
+  name?: string;
+  defaultValue?: string;
+  value?: string;
+  onValueChange?: (nextValue: string) => void;
+  compact?: boolean;
 }) {
-  const initial = useMemo(() => fromIsoDate(defaultValue), [defaultValue]);
+  const fallbackValue = defaultValue ?? value ?? new Date().toISOString().slice(0, 10);
+  const initial = useMemo(() => fromIsoDate(fallbackValue), [fallbackValue]);
   const [selectedDate, setSelectedDate] = useState<Date>(initial);
   const [open, setOpen] = useState(false);
+  const controlledDate = value ? fromIsoDate(value) : undefined;
+  const activeDate = controlledDate ?? selectedDate;
+  const activeValue = toIsoDate(activeDate);
 
   return (
     <div>
-      <input type="hidden" name={name} value={toIsoDate(selectedDate)} />
+      {name ? <input type="hidden" name={name} value={activeValue} /> : null}
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button
             type="button"
             variant="outline"
-            className="h-10 w-full justify-start rounded-full border-primary/25 bg-primary/5 text-left font-medium"
+            className={
+              compact
+                ? "h-10 w-full justify-start gap-2 rounded-full border-primary/25 bg-primary/5 px-3 text-left font-medium"
+                : "h-10 w-full justify-start rounded-full border-primary/25 bg-primary/5 text-left font-medium"
+            }
           >
-            <CalendarDays className="mr-2 h-4 w-4 text-primary" />
-            <span className="rounded-full bg-primary/10 px-3 py-1 text-xs text-primary">Date</span>
-            <span className="ml-2">
-              {selectedDate.toLocaleDateString("fr-FR", {
+            <CalendarDays className={compact ? "h-4 w-4 text-primary" : "mr-2 h-4 w-4 text-primary"} />
+            {compact ? null : <span className="rounded-full bg-primary/10 px-3 py-1 text-xs text-primary">Date</span>}
+            <span className={compact ? "" : "ml-2"}>
+              {activeDate.toLocaleDateString("fr-FR", {
                 day: "2-digit",
                 month: "short",
                 year: "numeric",
@@ -55,10 +69,13 @@ export function DatePillPicker({
         <PopoverContent className="w-auto p-2" align="start">
           <Calendar
             mode="single"
-            selected={selectedDate}
+            selected={activeDate}
             onSelect={(date) => {
               if (!date) return;
-              setSelectedDate(date);
+              if (!value) {
+                setSelectedDate(date);
+              }
+              onValueChange?.(toIsoDate(date));
               setOpen(false);
             }}
           />

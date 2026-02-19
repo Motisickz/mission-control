@@ -145,6 +145,33 @@ export default defineSchema({
     progress: v.number(),
   }).index("by_profile_period", ["profileId", "period"]),
 
+  showNoShow: defineTable({
+    dateDuRdv: v.string(),
+    nom: v.string(),
+    lieuDuRdv: v.union(v.literal("studio"), v.literal("zoom")),
+    confirme: v.union(v.literal("Oui"), v.literal("Non")),
+    presence: v.union(v.literal("Show"), v.literal("No Show"), v.literal("Annulé par l'artiste")),
+    vente: v.union(v.literal("Oui"), v.literal("Non"), v.literal("Devis envoyé")),
+    typeDeVente: v.union(v.literal("Compo/Arrangement"), v.literal("Prise de voix")),
+    commentaires: v.string(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    createdBy: v.id("profiles"),
+  }).index("by_date_du_rdv", ["dateDuRdv"]),
+
+  missedCalls: defineTable({
+    dateEtHoraireAppelManque: v.string(),
+    numeroDeTel: v.string(),
+    contactHubspot: v.string(),
+    messageVocal: v.boolean(),
+    rappele1foisAsap: v.boolean(),
+    rappele2foisJ1: v.boolean(),
+    commentaires: v.string(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    createdBy: v.id("profiles"),
+  }).index("by_date_et_horaire", ["dateEtHoraireAppelManque"]),
+
   editorialEvents: defineTable({
     title: v.string(),
     category: v.union(v.literal("marronnier"), v.literal("soldes"), v.literal("interne")),

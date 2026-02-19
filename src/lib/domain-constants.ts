@@ -216,6 +216,8 @@ export const MAIN_NAV: MainNavItem[] = [
       { href: "/missions/priorites", label: "Priorités du jour" },
       { href: "/missions/board", label: "Board" },
       { href: "/missions/rappel-hebdo", label: "Rappel hebdomadaire" },
+      { href: "/missions/show-no-show", label: "Show / No show" },
+      { href: "/missions/appels-manques", label: "Appels manqués" },
     ],
   },
   {

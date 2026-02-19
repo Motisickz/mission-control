@@ -7,9 +7,14 @@ import { Input } from "@/components/ui/input";
 type CreateCardInlineProps = {
   onCreate: (title: string) => Promise<void> | void;
   openSignal?: number;
+  hideClosedTrigger?: boolean;
 };
 
-export function CreateCardInline({ onCreate, openSignal = 0 }: CreateCardInlineProps) {
+export function CreateCardInline({
+  onCreate,
+  openSignal = 0,
+  hideClosedTrigger = false,
+}: CreateCardInlineProps) {
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -22,6 +27,10 @@ export function CreateCardInline({ onCreate, openSignal = 0 }: CreateCardInlineP
   }, [openSignal]);
 
   if (!open) {
+    if (hideClosedTrigger) {
+      return null;
+    }
+
     return (
       <Button
         type="button"

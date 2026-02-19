@@ -373,13 +373,21 @@ export function CommunicationSuggestionsView() {
 
   const selectedEvent = useMemo(() => {
     if (!selectedEventId) return null;
-    return (events ?? []).find((event) => event._id === selectedEventId) ?? null;
-  }, [events, selectedEventId]);
+    return filtered.find((event) => event._id === selectedEventId) ?? null;
+  }, [filtered, selectedEventId]);
 
   const recommendation = useMemo(() => {
     if (!selectedEvent) return null;
     return localSuggestion(selectedEvent as EventLike);
   }, [selectedEvent]);
+
+  const recommendationsByEventId = useMemo(() => {
+    const map = new Map<string, SuggestionJson>();
+    for (const event of filtered) {
+      map.set(event._id, localSuggestion(event as EventLike));
+    }
+    return map;
+  }, [filtered]);
 
   return (
     <div className="space-y-6">
@@ -395,256 +403,349 @@ export function CommunicationSuggestionsView() {
         </CardHeader>
       </Card>
 
-      <div className="grid gap-4 lg:grid-cols-[1.25fr_1fr]">
-        <Card className="border-border/70">
-          <CardHeader>
-            <CardTitle>Événements</CardTitle>
-            <CardDescription>{filtered.length} résultat(s)</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid gap-3 lg:grid-cols-2">
-              <div className="space-y-1">
-                <Label className="text-xs uppercase tracking-[0.14em] text-muted-foreground">Recherche</Label>
-                <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Tape un mot du titre..." />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs uppercase tracking-[0.14em] text-muted-foreground">Fenêtre</Label>
-                <Select value={windowMode} onValueChange={(v) => setWindowMode(v as WindowMode)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Tous</SelectItem>
-                    <SelectItem value="prep_30">À préparer (30j)</SelectItem>
-                    <SelectItem value="post_90">À poster (90j)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs uppercase tracking-[0.14em] text-muted-foreground">Tri</Label>
-                <Select value={sortMode} onValueChange={(v) => setSortMode(v as SortMode)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="prep_then_post">Échéance (prep) puis post</SelectItem>
-                    <SelectItem value="post_then_prep">Post puis échéance (prep)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs uppercase tracking-[0.14em] text-muted-foreground">Owner</Label>
-                <Select value={ownerProfileId} onValueChange={setOwnerProfileId}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Tout le monde</SelectItem>
-                    {(profiles ?? []).map((profile) => (
-                      <SelectItem key={profile._id} value={profile._id}>
-                        {profile.displayName}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs uppercase tracking-[0.14em] text-muted-foreground">Catégorie</Label>
-                <Select value={category} onValueChange={(v) => setCategory(v as typeof category)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Toutes</SelectItem>
-                    {Object.values(EDITORIAL_EVENT_CATEGORIES)
-                      .filter((value) => value !== "marronnier")
-                      .map((value) => (
-                        <SelectItem key={value} value={value}>
-                          {EDITORIAL_EVENT_CATEGORY_LABELS[value]}
-                        </SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs uppercase tracking-[0.14em] text-muted-foreground">Statut</Label>
-                <Select value={status} onValueChange={(v) => setStatus(v as typeof status)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Tous</SelectItem>
-                    {Object.values(EDITORIAL_EVENT_STATUSES).map((value) => (
-                      <SelectItem key={value} value={value}>
-                        {EDITORIAL_EVENT_STATUS_LABELS[value]}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs uppercase tracking-[0.14em] text-muted-foreground">Priorité</Label>
-                <Select value={priority} onValueChange={(v) => setPriority(v as typeof priority)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Toutes</SelectItem>
-                    {Object.values(EDITORIAL_EVENT_PRIORITIES).map((value) => (
-                      <SelectItem key={value} value={value}>
-                        {EDITORIAL_EVENT_PRIORITY_LABELS[value]}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+      <Card className="border-border/70">
+        <CardHeader>
+          <CardTitle>Événements</CardTitle>
+          <CardDescription>{filtered.length} résultat(s)</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-3 lg:grid-cols-2">
+            <div className="space-y-1">
+              <Label className="text-xs uppercase tracking-[0.14em] text-muted-foreground">Recherche</Label>
+              <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Tape un mot du titre..." />
             </div>
-
-            <div className="space-y-2">
-              {filtered.length === 0 ? (
-                <p className="rounded-lg border border-dashed border-border/80 p-6 text-center text-sm text-muted-foreground">
-                  Aucun événement dans cette vue.
-                </p>
-              ) : (
-                filtered.map((event) => {
-                  const active = selectedEventId === event._id;
-                  return (
-                    <button
-                      key={event._id}
-                      type="button"
-                      onClick={() => setSelectedEventId(event._id)}
-                      className={cn(
-                        "w-full text-left rounded-lg border border-border/70 bg-background/70 p-3 hover:bg-primary/5",
-                        active && "border-primary/40 bg-primary/5",
-                      )}
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <p className="truncate font-medium">{event.title}</p>
-                          <p className="mt-1 text-xs text-muted-foreground">
-                            Prep: {compactDate(event.prepStartDate)} • Post: {compactDate(event.startDate)}
-                          </p>
-                          <p className="mt-1 text-xs text-muted-foreground">
-                            Owner: {profileNames.get(event.ownerProfileId) ?? "Membre"}
-                          </p>
-                        </div>
-                        <div className="flex shrink-0 flex-col items-end gap-1">
-                          <Badge variant="secondary">{EDITORIAL_EVENT_STATUS_LABELS[event.status]}</Badge>
-                          <Badge variant="outline">Reco locale</Badge>
-                        </div>
-                      </div>
-                    </button>
-                  );
-                })
-              )}
+            <div className="space-y-1">
+              <Label className="text-xs uppercase tracking-[0.14em] text-muted-foreground">Fenêtre</Label>
+              <Select value={windowMode} onValueChange={(v) => setWindowMode(v as WindowMode)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tous</SelectItem>
+                  <SelectItem value="prep_30">À préparer (30j)</SelectItem>
+                  <SelectItem value="post_90">À poster (90j)</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-          </CardContent>
-        </Card>
+            <div className="space-y-1">
+              <Label className="text-xs uppercase tracking-[0.14em] text-muted-foreground">Tri</Label>
+              <Select value={sortMode} onValueChange={(v) => setSortMode(v as SortMode)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="prep_then_post">Échéance (prep) puis post</SelectItem>
+                  <SelectItem value="post_then_prep">Post puis échéance (prep)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs uppercase tracking-[0.14em] text-muted-foreground">Owner</Label>
+              <Select value={ownerProfileId} onValueChange={setOwnerProfileId}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tout le monde</SelectItem>
+                  {(profiles ?? []).map((profile) => (
+                    <SelectItem key={profile._id} value={profile._id}>
+                      {profile.displayName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs uppercase tracking-[0.14em] text-muted-foreground">Catégorie</Label>
+              <Select value={category} onValueChange={(v) => setCategory(v as typeof category)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Toutes</SelectItem>
+                  {Object.values(EDITORIAL_EVENT_CATEGORIES)
+                    .filter((value) => value !== "marronnier")
+                    .map((value) => (
+                      <SelectItem key={value} value={value}>
+                        {EDITORIAL_EVENT_CATEGORY_LABELS[value]}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs uppercase tracking-[0.14em] text-muted-foreground">Statut</Label>
+              <Select value={status} onValueChange={(v) => setStatus(v as typeof status)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tous</SelectItem>
+                  {Object.values(EDITORIAL_EVENT_STATUSES).map((value) => (
+                    <SelectItem key={value} value={value}>
+                      {EDITORIAL_EVENT_STATUS_LABELS[value]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs uppercase tracking-[0.14em] text-muted-foreground">Priorité</Label>
+              <Select value={priority} onValueChange={(v) => setPriority(v as typeof priority)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Toutes</SelectItem>
+                  {Object.values(EDITORIAL_EVENT_PRIORITIES).map((value) => (
+                    <SelectItem key={value} value={value}>
+                      {EDITORIAL_EVENT_PRIORITY_LABELS[value]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
-        <Card className="border-border/70">
-          <CardHeader>
-            <CardTitle>Détail</CardTitle>
-            <CardDescription>
-              {selectedEvent ? `Événement: ${selectedEvent.title}` : "Sélectionne un événement à gauche."}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {selectedEvent && recommendation ? (
-              <>
-                <div className="rounded-lg border border-border/70 bg-background/70 p-3">
-                  <p className="text-sm">
-                    Prep: <span className="font-medium">{compactDate(selectedEvent.prepStartDate)}</span>
-                    {" • "}
-                    Post: <span className="font-medium">{compactDate(selectedEvent.startDate)}</span>
-                  </p>
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    <Badge variant="outline">{EDITORIAL_EVENT_CATEGORY_LABELS[selectedEvent.category]}</Badge>
-                    <Badge variant="outline">{EDITORIAL_EVENT_PRIORITY_LABELS[selectedEvent.priority]}</Badge>
-                    <Badge variant="secondary">{EDITORIAL_EVENT_STATUS_LABELS[selectedEvent.status]}</Badge>
+      <section className="space-y-4">
+        {filtered.length === 0 ? (
+          <p className="rounded-lg border border-dashed border-border/80 p-6 text-center text-sm text-muted-foreground">
+            Aucun événement dans cette vue.
+          </p>
+        ) : (
+          filtered.map((event) => {
+            const active = selectedEventId === event._id;
+            const suggestion = recommendationsByEventId.get(event._id);
+            if (!suggestion) return null;
+            return (
+              <Card key={event._id} className={cn("border-border/70", active && "border-primary/50 bg-primary/5")}>
+                <CardHeader className="space-y-3">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="min-w-0 space-y-1">
+                      <CardTitle className="truncate text-lg">{event.title}</CardTitle>
+                      <CardDescription>
+                        Prep: {compactDate(event.prepStartDate)} • Post: {compactDate(event.startDate)} • Owner:{" "}
+                        {profileNames.get(event.ownerProfileId) ?? "Membre"}
+                      </CardDescription>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge variant="outline">{EDITORIAL_EVENT_CATEGORY_LABELS[event.category]}</Badge>
+                      <Badge variant="outline">{EDITORIAL_EVENT_PRIORITY_LABELS[event.priority]}</Badge>
+                      <Badge variant="secondary">{EDITORIAL_EVENT_STATUS_LABELS[event.status]}</Badge>
+                    </div>
                   </div>
-                </div>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="grid gap-3 md:grid-cols-3">
+                    <div className="rounded-lg border border-border/70 bg-background/70 p-3">
+                      <p className="text-xs uppercase tracking-[0.12em] text-muted-foreground">Objectif</p>
+                      <p className="mt-1 text-sm font-medium">{suggestion.strategie.objectif}</p>
+                    </div>
+                    <div className="rounded-lg border border-border/70 bg-background/70 p-3">
+                      <p className="text-xs uppercase tracking-[0.12em] text-muted-foreground">Angle RS</p>
+                      <p className="mt-1 text-sm font-medium">{suggestion.strategie.angle}</p>
+                    </div>
+                    <div className="rounded-lg border border-border/70 bg-background/70 p-3">
+                      <p className="text-xs uppercase tracking-[0.12em] text-muted-foreground">CTA principal</p>
+                      <p className="mt-1 text-sm font-medium">{suggestion.strategie.cta}</p>
+                    </div>
+                  </div>
 
-                <Card className="border-border/70">
-                  <CardHeader>
-                    <CardTitle className="text-base">Stratégie</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-2 text-sm">
-                    <p>
-                      <span className="text-muted-foreground">Objectif:</span>{" "}
-                      <span className="font-medium">{recommendation.strategie.objectif}</span>
-                    </p>
-                    <p>
-                      <span className="text-muted-foreground">Angle:</span>{" "}
-                      <span className="font-medium">{recommendation.strategie.angle}</span>
-                    </p>
-                    <p>
-                      <span className="text-muted-foreground">CTA:</span>{" "}
-                      <span className="font-medium">{recommendation.strategie.cta}</span>
-                    </p>
-                    <div>
-                      <p className="text-muted-foreground">Planning:</p>
-                      <ul className="mt-1 list-disc pl-5">
-                        {recommendation.strategie.planning.map((item, i) => (
-                          <li key={i}>{item}</li>
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <div className="rounded-lg border border-border/70 bg-background/70 p-3">
+                      <p className="text-xs uppercase tracking-[0.12em] text-muted-foreground">Idées Reels</p>
+                      <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-muted-foreground">
+                        {suggestion.reels.slice(0, 3).map((item, idx) => (
+                          <li key={idx}>{item.titre}</li>
                         ))}
                       </ul>
                     </div>
-                  </CardContent>
-                </Card>
+                    <div className="rounded-lg border border-border/70 bg-background/70 p-3">
+                      <p className="text-xs uppercase tracking-[0.12em] text-muted-foreground">Idées Stories</p>
+                      <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-muted-foreground">
+                        {suggestion.stories.slice(0, 3).map((item, idx) => (
+                          <li key={idx}>{item.titre}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
 
-                <Card className="border-border/70">
-                  <CardHeader>
-                    <CardTitle className="text-base">Idées Reels</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3 text-sm">
-                    {recommendation.reels.map((r, i) => (
-                      <div key={i} className="rounded-lg border border-border/70 bg-background/70 p-3">
-                        <p className="font-medium">{r.titre}</p>
-                        <p className="mt-1 text-muted-foreground">
-                          Hook: <span className="text-foreground">{r.hook}</span>
-                        </p>
-                        <p className="mt-2 text-muted-foreground whitespace-pre-line">{r.scenario}</p>
-                      </div>
-                    ))}
-                  </CardContent>
-                </Card>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedEventId(event._id)}
+                    className={cn(
+                      "w-full rounded-md border border-border/70 bg-background px-3 py-2 text-left text-sm font-medium hover:bg-primary/5",
+                      active && "border-primary/40 bg-primary/10",
+                    )}
+                  >
+                    {active ? "Dossier affiché plus bas" : "Ouvrir le dossier complet (vue détaillée)"}
+                  </button>
+                </CardContent>
+              </Card>
+            );
+          })
+        )}
+      </section>
 
-                <Card className="border-border/70">
-                  <CardHeader>
-                    <CardTitle className="text-base">Stories</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3 text-sm">
-                    {recommendation.stories.map((s, i) => (
-                      <div key={i} className="rounded-lg border border-border/70 bg-background/70 p-3">
-                        <p className="font-medium">{s.titre}</p>
-                        <ul className="mt-2 list-disc pl-5 text-muted-foreground">
-                          {s.sequence.map((x, j) => (
-                            <li key={j}>{x}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    ))}
-                  </CardContent>
-                </Card>
+      {selectedEvent && recommendation ? (
+        <Card id="suggestion-dossier" className="border-primary/40 bg-primary/[0.04]">
+          <CardHeader className="space-y-3">
+            <CardTitle className="text-xl">Dossier RS complet - {selectedEvent.title}</CardTitle>
+            <CardDescription>
+              Plan détaillé prêt à produire: stratégie, calendrier, scripts Reels/Stories, thèmes éditoriaux, KPI et
+              checklist exécution.
+            </CardDescription>
+            <div className="flex flex-wrap gap-2">
+              <Badge variant="outline">{EDITORIAL_EVENT_CATEGORY_LABELS[selectedEvent.category]}</Badge>
+              <Badge variant="outline">{EDITORIAL_EVENT_PRIORITY_LABELS[selectedEvent.priority]}</Badge>
+              <Badge variant="secondary">{EDITORIAL_EVENT_STATUS_LABELS[selectedEvent.status]}</Badge>
+              <Badge variant="outline">Prep: {compactDate(selectedEvent.prepStartDate)}</Badge>
+              <Badge variant="outline">Post: {compactDate(selectedEvent.startDate)}</Badge>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid gap-3 lg:grid-cols-3">
+              <div className="rounded-lg border border-border/70 bg-background/70 p-3">
+                <p className="text-xs uppercase tracking-[0.12em] text-muted-foreground">Objectif</p>
+                <p className="mt-1 text-sm font-medium">{recommendation.strategie.objectif}</p>
+              </div>
+              <div className="rounded-lg border border-border/70 bg-background/70 p-3">
+                <p className="text-xs uppercase tracking-[0.12em] text-muted-foreground">Angle éditorial</p>
+                <p className="mt-1 text-sm font-medium">{recommendation.strategie.angle}</p>
+              </div>
+              <div className="rounded-lg border border-border/70 bg-background/70 p-3">
+                <p className="text-xs uppercase tracking-[0.12em] text-muted-foreground">CTA stratégique</p>
+                <p className="mt-1 text-sm font-medium">{recommendation.strategie.cta}</p>
+              </div>
+            </div>
 
-                <Card className="border-border/70">
-                  <CardHeader>
-                    <CardTitle className="text-base">Thèmes</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3 text-sm">
-                    {recommendation.themes.map((t, i) => (
-                      <div key={i} className="rounded-lg border border-border/70 bg-background/70 p-3">
-                        <p className="font-medium">{t.theme}</p>
-                        <p className="mt-1 text-muted-foreground">{t.pourquoi}</p>
-                      </div>
+            <div className="grid gap-4 lg:grid-cols-2">
+              <Card className="border-border/70">
+                <CardHeader>
+                  <CardTitle className="text-base">Planning de campagne</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ul className="list-disc space-y-1 pl-5 text-sm">
+                    {recommendation.strategie.planning.map((item, i) => (
+                      <li key={i}>{item}</li>
                     ))}
-                  </CardContent>
-                </Card>
-              </>
-            ) : null}
+                  </ul>
+                </CardContent>
+              </Card>
+
+              <Card className="border-border/70">
+                <CardHeader>
+                  <CardTitle className="text-base">KPI de suivi</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ul className="list-disc space-y-1 pl-5 text-sm">
+                    {recommendation.strategie.kpis.map((kpi, i) => (
+                      <li key={i}>{kpi}</li>
+                    ))}
+                  </ul>
+                </CardContent>
+              </Card>
+            </div>
+
+            <Card className="border-border/70">
+              <CardHeader>
+                <CardTitle className="text-base">Scripts Reels (détaillés)</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {recommendation.reels.map((r, i) => (
+                  <div key={i} className="rounded-lg border border-border/70 bg-background/70 p-3 text-sm">
+                    <p className="font-medium">{r.titre}</p>
+                    <p className="mt-1 text-muted-foreground">
+                      Hook: <span className="text-foreground">{r.hook}</span>
+                    </p>
+                    <p className="mt-2 whitespace-pre-line text-muted-foreground">{r.scenario}</p>
+                    <p className="mt-2">
+                      <span className="text-muted-foreground">Texte écran:</span> {r.texteOnScreen}
+                    </p>
+                    <p className="mt-1">
+                      <span className="text-muted-foreground">Caption:</span> {r.caption}
+                    </p>
+                    <p className="mt-1">
+                      <span className="text-muted-foreground">CTA:</span> {r.cta}
+                    </p>
+                    <p className="mt-2 text-muted-foreground">Plans:</p>
+                    <ul className="list-disc pl-5">
+                      {r.plans.map((plan, j) => (
+                        <li key={j}>{plan}</li>
+                      ))}
+                    </ul>
+                    <p className="mt-2 text-muted-foreground">Hashtags:</p>
+                    <div className="mt-1 flex flex-wrap gap-1">
+                      {r.hashtags.map((tag, j) => (
+                        <Badge key={j} variant="outline">
+                          {tag}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+
+            <Card className="border-border/70">
+              <CardHeader>
+                <CardTitle className="text-base">Flow Stories (détaillé)</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {recommendation.stories.map((s, i) => (
+                  <div key={i} className="rounded-lg border border-border/70 bg-background/70 p-3 text-sm">
+                    <p className="font-medium">{s.titre}</p>
+                    <ul className="mt-2 list-disc pl-5 text-muted-foreground">
+                      {s.sequence.map((x, j) => (
+                        <li key={j}>{x}</li>
+                      ))}
+                    </ul>
+                    <p className="mt-2">
+                      <span className="text-muted-foreground">CTA final:</span> {s.cta}
+                    </p>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+
+            <div className="grid gap-4 lg:grid-cols-2">
+              <Card className="border-border/70">
+                <CardHeader>
+                  <CardTitle className="text-base">Thèmes éditoriaux</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3 text-sm">
+                  {recommendation.themes.map((t, i) => (
+                    <div key={i} className="rounded-lg border border-border/70 bg-background/70 p-3">
+                      <p className="font-medium">{t.theme}</p>
+                      <p className="mt-1 text-muted-foreground">{t.pourquoi}</p>
+                      <ul className="mt-2 list-disc pl-5 text-muted-foreground">
+                        {t.variantes.map((variant, j) => (
+                          <li key={j}>{variant}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+
+              <Card className="border-border/70">
+                <CardHeader>
+                  <CardTitle className="text-base">Checklist d&apos;exécution</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ul className="list-disc space-y-1 pl-5 text-sm">
+                    {recommendation.checklist.map((item, i) => (
+                      <li key={i}>{item}</li>
+                    ))}
+                  </ul>
+                </CardContent>
+              </Card>
+            </div>
           </CardContent>
         </Card>
-      </div>
+      ) : null}
     </div>
   );
 }

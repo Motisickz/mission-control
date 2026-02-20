@@ -253,6 +253,62 @@ export const createSpace = mutation({
   },
 });
 
+export const deleteSpace = mutation({
+  args: {
+    spaceId: v.id("spaces"),
+  },
+  handler: async (ctx, args) => {
+    const { profile } = await requireProfile(ctx);
+    const space = await assertSpaceAccess(ctx, args.spaceId, profile._id);
+
+    if (space.kind !== "custom") {
+      throw new Error("Seuls les espaces personnalisés peuvent être supprimés.");
+    }
+    if (space.ownerId !== profile._id) {
+      throw new Error("Seul le propriétaire peut supprimer cet espace.");
+    }
+
+    const instances = await ctx.db
+      .query("boardCardInstances")
+      .withIndex("by_space_order", (q) => q.eq("spaceId", args.spaceId))
+      .collect();
+    const memberRows = await ctx.db
+      .query("spaceMembers")
+      .withIndex("by_space", (q) => q.eq("spaceId", args.spaceId))
+      .collect();
+    const columns = await ctx.db
+      .query("boardColumns")
+      .withIndex("by_space_order", (q) => q.eq("spaceId", args.spaceId))
+      .collect();
+
+    for (const instance of instances) {
+      await ctx.db.delete(instance._id);
+
+      const remainingForCard = await ctx.db
+        .query("boardCardInstances")
+        .withIndex("by_card", (q) => q.eq("cardId", instance.cardId))
+        .collect();
+      if (remainingForCard.length === 0) {
+        const card = await ctx.db.get(instance.cardId);
+        if (card?.boardCard) {
+          await ctx.db.delete(instance.cardId);
+        }
+      }
+    }
+
+    for (const member of memberRows) {
+      await ctx.db.delete(member._id);
+    }
+
+    for (const column of columns) {
+      await ctx.db.delete(column._id);
+    }
+
+    await ctx.db.delete(args.spaceId);
+    return { deletedSpaceId: args.spaceId };
+  },
+});
+
 export const getBoardData = query({
   args: {
     spaceId: v.id("spaces"),
@@ -756,5 +812,41 @@ export const duplicateCard = mutation({
       cardId: newCardId,
       instanceId,
     };
+  },
+});
+
+export const deleteBoardCard = mutation({
+  args: {
+    spaceId: v.id("spaces"),
+    cardId: v.id("tasks"),
+  },
+  handler: async (ctx, args) => {
+    const { profile } = await requireProfile(ctx);
+    await assertSpaceAccess(ctx, args.spaceId, profile._id);
+
+    const instance = await ctx.db
+      .query("boardCardInstances")
+      .withIndex("by_space_card", (q) => q.eq("spaceId", args.spaceId).eq("cardId", args.cardId))
+      .first();
+
+    if (!instance) {
+      throw new Error("Carte introuvable dans cet espace.");
+    }
+
+    await ctx.db.delete(instance._id);
+
+    const remainingInstances = await ctx.db
+      .query("boardCardInstances")
+      .withIndex("by_card", (q) => q.eq("cardId", args.cardId))
+      .collect();
+
+    if (remainingInstances.length === 0) {
+      const card = await ctx.db.get(args.cardId);
+      if (card?.boardCard) {
+        await ctx.db.delete(args.cardId);
+      }
+    }
+
+    return { deletedCardId: args.cardId, deletedInstanceId: instance._id };
   },
 });

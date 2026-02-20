@@ -279,6 +279,7 @@ export function useMissionsBoard() {
 
   const ensureBoardSetup = useMutation(api.board.ensureBoardSetup);
   const createSpace = useMutation(api.board.createSpace);
+  const deleteSpace = useMutation(api.board.deleteSpace);
   const updateBoardColumn = useMutation(api.board.updateBoardColumn);
   const batchUpdateColumnOrders = useMutation(api.board.batchUpdateColumnOrders);
   const createBoardTask = useMutation(api.board.createBoardTask);
@@ -287,6 +288,7 @@ export function useMissionsBoard() {
   const addChecklistItem = useMutation(api.board.addChecklistItem);
   const toggleChecklistItem = useMutation(api.board.toggleChecklistItem);
   const duplicateCard = useMutation(api.board.duplicateCard);
+  const deleteBoardCard = useMutation(api.board.deleteBoardCard);
 
   const [taskFilter, setTaskFilter] = useState<BoardFilter>("all");
   const [searchValue, setSearchValue] = useState("");
@@ -467,6 +469,31 @@ export function useMissionsBoard() {
       setSelectedSpaceId(created._id);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Impossible de créer l'espace.";
+      toast.error(message);
+      throw error;
+    }
+  }
+
+  const selectedSpace = useMemo(
+    () => typedSpaces.find((space) => space._id === activeSpaceId) ?? null,
+    [activeSpaceId, typedSpaces],
+  );
+
+  const canDeleteSelectedSpace = useMemo(() => {
+    if (!selectedSpace || !currentProfile) return false;
+    return selectedSpace.kind === "custom" && selectedSpace.ownerId === currentProfile._id;
+  }, [currentProfile, selectedSpace]);
+
+  async function deleteSelectedSpace() {
+    if (!activeSpaceId) return;
+    if (!canDeleteSelectedSpace) return;
+
+    try {
+      await deleteSpace({ spaceId: activeSpaceId });
+      setSelectedSpaceId(null);
+      toast.success("Espace supprimé.");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Impossible de supprimer l'espace.";
       toast.error(message);
       throw error;
     }
@@ -772,6 +799,21 @@ export function useMissionsBoard() {
     }
   }
 
+  async function deleteCardFromSelectedSpace(cardId: Id<"tasks">) {
+    if (!activeSpaceId) return;
+    try {
+      await deleteBoardCard({ spaceId: activeSpaceId, cardId });
+      if (selectedTaskId === cardId) {
+        setSelectedTaskId(null);
+      }
+      toast.success("Carte supprimée de cet espace.");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Impossible de supprimer la carte.";
+      toast.error(message);
+      throw error;
+    }
+  }
+
   function handleDragStart(event: DragStartEvent) {
     const data = event.active.data.current as
       | { type?: "task"; instanceId?: Id<"boardCardInstances"> }
@@ -870,8 +912,11 @@ export function useMissionsBoard() {
     currentProfile,
     profiles: profiles ?? [],
     directoryProfiles: directoryProfiles ?? [],
+    selectedSpace,
+    canDeleteSelectedSpace,
     profileById,
     createSpaceWithMembers,
+    deleteSelectedSpace,
     createCard,
     saveTaskDetails,
     renameTaskTitle,
@@ -882,6 +927,7 @@ export function useMissionsBoard() {
     createChecklistItem,
     toggleChecklist,
     duplicateBoardCard,
+    deleteCardFromSelectedSpace,
     handleDragStart,
     handleDragCancel,
     handleDragEnd,

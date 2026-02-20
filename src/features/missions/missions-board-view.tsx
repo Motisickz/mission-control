@@ -67,6 +67,8 @@ export function MissionsBoardView() {
             onSpaceChange={board.setSelectedSpaceId}
             directoryProfiles={board.directoryProfiles}
             onCreateSpace={board.createSpaceWithMembers}
+            canDeleteSelectedSpace={board.canDeleteSelectedSpace}
+            onDeleteSelectedSpace={board.deleteSelectedSpace}
             taskFilter={board.taskFilter}
             onTaskFilterChange={board.setTaskFilter}
             searchValue={board.searchValue}
@@ -124,6 +126,7 @@ export function MissionsBoardView() {
         onToggleChecklist={board.toggleChecklist}
         onAddChecklistItem={board.createChecklistItem}
         onDuplicateRequest={setDuplicateCardId}
+        onDelete={board.deleteCardFromSelectedSpace}
       />
 
       <DuplicateCardDialog

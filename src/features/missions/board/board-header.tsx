@@ -22,6 +22,8 @@ type BoardHeaderProps = {
     visibility: "private" | "shared";
     memberIds: Id<"profiles">[];
   }) => Promise<void>;
+  canDeleteSelectedSpace: boolean;
+  onDeleteSelectedSpace: () => Promise<void>;
   taskFilter: BoardFilter;
   onTaskFilterChange: (value: BoardFilter) => void;
   searchValue: string;
@@ -44,6 +46,8 @@ export function BoardHeader({
   onSpaceChange,
   directoryProfiles,
   onCreateSpace,
+  canDeleteSelectedSpace,
+  onDeleteSelectedSpace,
   taskFilter,
   onTaskFilterChange,
   searchValue,
@@ -61,7 +65,23 @@ export function BoardHeader({
           selectedSpaceId={selectedSpaceId}
           onChange={onSpaceChange}
         />
-        <CreateSpaceDialog profiles={directoryProfiles} onCreate={onCreateSpace} />
+        <div className="flex items-center gap-2">
+          <CreateSpaceDialog profiles={directoryProfiles} onCreate={onCreateSpace} />
+          <Button
+            type="button"
+            variant="destructive"
+            disabled={!canDeleteSelectedSpace}
+            onClick={async () => {
+              const confirmed = window.confirm(
+                "Supprimer cet espace ? Cette action est définitive et supprime aussi ses colonnes/cartes.",
+              );
+              if (!confirmed) return;
+              await onDeleteSelectedSpace();
+            }}
+          >
+            Supprimer l&apos;espace
+          </Button>
+        </div>
       </div>
 
       <div className="flex flex-wrap items-center gap-3">

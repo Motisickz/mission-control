@@ -40,6 +40,7 @@ type CardDetailDrawerProps = {
   onToggleChecklist: (cardId: Id<"tasks">, itemId: string) => Promise<void>;
   onAddChecklistItem: (cardId: Id<"tasks">, text: string) => Promise<void>;
   onDuplicateRequest: (cardId: Id<"tasks">) => void;
+  onDelete: (cardId: Id<"tasks">) => Promise<void>;
 };
 
 type DescriptionChecklistLine = {
@@ -92,6 +93,7 @@ export function CardDetailDrawer({
   onToggleChecklist,
   onAddChecklistItem,
   onDuplicateRequest,
+  onDelete,
 }: CardDetailDrawerProps) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -387,6 +389,24 @@ export function CardDetailDrawer({
         </div>
 
         <SheetFooter className="border-t border-border/70 sm:flex-row sm:justify-end">
+          <Button
+            type="button"
+            variant="destructive"
+            disabled={saving}
+            onClick={async () => {
+              const confirmed = window.confirm("Supprimer cette carte de cet espace ?");
+              if (!confirmed) return;
+              setSaving(true);
+              try {
+                await onDelete(task.cardId);
+                onOpenChange(false);
+              } finally {
+                setSaving(false);
+              }
+            }}
+          >
+            Supprimer
+          </Button>
           <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={saving}>
             Fermer
           </Button>

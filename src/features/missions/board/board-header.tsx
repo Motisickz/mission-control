@@ -1,13 +1,27 @@
 import { Search, SlidersHorizontal, Tag } from "lucide-react";
+import type { Id } from "../../../../convex/_generated/dataModel";
 
-import type { BoardFilter } from "./board-types";
+import type { BoardFilter, BoardProfileDoc, BoardSpaceDoc } from "./board-types";
 import { getTagChipStyle } from "./board-types";
+import { CreateSpaceDialog } from "./create-space-dialog";
+import { SpaceSwitcher } from "./space-switcher";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 
 type BoardHeaderProps = {
+  spaces: BoardSpaceDoc[];
+  selectedSpaceId: Id<"spaces"> | null;
+  onSpaceChange: (spaceId: Id<"spaces">) => void;
+  directoryProfiles: BoardProfileDoc[];
+  onCreateSpace: (payload: {
+    name: string;
+    description?: string;
+    color?: string;
+    visibility: "private" | "shared";
+    memberIds: Id<"profiles">[];
+  }) => Promise<void>;
   taskFilter: BoardFilter;
   onTaskFilterChange: (value: BoardFilter) => void;
   searchValue: string;
@@ -25,6 +39,11 @@ const FILTER_OPTIONS: Array<{ key: BoardFilter; label: string }> = [
 ];
 
 export function BoardHeader({
+  spaces,
+  selectedSpaceId,
+  onSpaceChange,
+  directoryProfiles,
+  onCreateSpace,
   taskFilter,
   onTaskFilterChange,
   searchValue,
@@ -36,6 +55,15 @@ export function BoardHeader({
 }: BoardHeaderProps) {
   return (
     <section className="rounded-2xl border border-border/70 bg-card/80 p-4">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+        <SpaceSwitcher
+          spaces={spaces}
+          selectedSpaceId={selectedSpaceId}
+          onChange={onSpaceChange}
+        />
+        <CreateSpaceDialog profiles={directoryProfiles} onCreate={onCreateSpace} />
+      </div>
+
       <div className="flex flex-wrap items-center gap-3">
         <div className="inline-flex rounded-lg border border-border/70 bg-muted/40 p-1">
           {FILTER_OPTIONS.map((option) => (

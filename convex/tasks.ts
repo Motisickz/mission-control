@@ -51,8 +51,8 @@ function isFixedDailyBlock(task: { entryType?: string; templateId?: string }) {
   return task.entryType === "daily_block" && !!task.templateId;
 }
 
-function isBoardCard(task: { type?: string; columnId?: Id<"boardColumns"> }) {
-  return !!task.columnId && (task.type ?? "exception") === "exception";
+function isBoardCard(task: { type?: string; columnId?: Id<"boardColumns">; boardCard?: boolean }) {
+  return !!task.boardCard || (!!task.columnId && (task.type ?? "exception") === "exception");
 }
 
 async function loadTasksInDateRange(

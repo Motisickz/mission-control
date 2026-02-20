@@ -3,7 +3,13 @@ import type { CSSProperties } from "react";
 
 export type BoardFilter = "all" | "urgent" | "mine";
 export type BoardColumnDoc = Doc<"boardColumns">;
-export type BoardTaskDoc = Doc<"tasks">;
+export type BoardSpaceDoc = Doc<"spaces"> & { label?: string };
+export type BoardTaskDoc = Doc<"tasks"> & {
+  instanceId: Id<"boardCardInstances">;
+  cardId: Id<"tasks">;
+  columnId: Id<"boardColumns">;
+  order: number;
+};
 export type BoardProfileDoc = Doc<"profiles">;
 
 export type BoardChecklistItem = {

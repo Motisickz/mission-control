@@ -5,14 +5,28 @@ import { toast } from "sonner";
 import type { Id } from "../../../../convex/_generated/dataModel";
 
 import { api } from "../../../../convex/_generated/api";
-import type { BoardColumnDoc, BoardFilter, BoardProfileDoc, BoardTaskDoc } from "./board-types";
+import type {
+  BoardColumnDoc,
+  BoardFilter,
+  BoardProfileDoc,
+  BoardSpaceDoc,
+  BoardTaskDoc,
+} from "./board-types";
 import { hasTaskAssignee } from "./board-types";
 
 type DropTarget =
-  | { kind: "task"; taskId: Id<"tasks"> }
+  | { kind: "task"; instanceId: Id<"boardCardInstances"> }
   | { kind: "column"; columnId: Id<"boardColumns"> };
 
 type ColumnSortMode = "priority" | "dueDate" | "title";
+
+type CreateSpacePayload = {
+  name: string;
+  description?: string;
+  color?: string;
+  visibility: "private" | "shared";
+  memberIds: Id<"profiles">[];
+};
 
 function sortBoardTasks(a: BoardTaskDoc, b: BoardTaskDoc) {
   if ((a.columnId ?? "") !== (b.columnId ?? "")) {
@@ -31,9 +45,9 @@ function sortBoardColumns(a: BoardColumnDoc, b: BoardColumnDoc) {
 
 function positionsMatch(clientTasks: BoardTaskDoc[], serverTasks: BoardTaskDoc[]) {
   if (clientTasks.length !== serverTasks.length) return false;
-  const serverById = new Map(serverTasks.map((task) => [task._id, task]));
+  const serverById = new Map(serverTasks.map((task) => [task.instanceId, task]));
   for (const clientTask of clientTasks) {
-    const serverTask = serverById.get(clientTask._id);
+    const serverTask = serverById.get(clientTask.instanceId);
     if (!serverTask) return false;
     if ((clientTask.columnId ?? "") !== (serverTask.columnId ?? "")) return false;
     if ((clientTask.order ?? 0) !== (serverTask.order ?? 0)) return false;
@@ -118,11 +132,15 @@ function resolveDropTarget(over: DragEndEvent["over"] | DragOverEvent["over"]) {
   if (!over) return null;
 
   const overData = over.data.current as
-    | { type?: "task" | "column" | "board-column"; taskId?: Id<"tasks">; columnId?: Id<"boardColumns"> }
+    | {
+      type?: "task" | "column" | "board-column";
+      instanceId?: Id<"boardCardInstances">;
+      columnId?: Id<"boardColumns">;
+    }
     | undefined;
 
-  if (overData?.type === "task" && overData.taskId) {
-    return { kind: "task", taskId: overData.taskId } satisfies DropTarget;
+  if (overData?.type === "task" && overData.instanceId) {
+    return { kind: "task", instanceId: overData.instanceId } satisfies DropTarget;
   }
 
   if (overData?.type === "column" && overData.columnId) {
@@ -170,22 +188,22 @@ function resolveColumnDropTarget(over: DragEndEvent["over"] | DragOverEvent["ove
 
 function reorderBoardTasks(
   tasks: BoardTaskDoc[],
-  activeTaskId: Id<"tasks">,
+  activeInstanceId: Id<"boardCardInstances">,
   target: DropTarget,
 ) {
-  const activeTask = tasks.find((task) => task._id === activeTaskId);
+  const activeTask = tasks.find((task) => task.instanceId === activeInstanceId);
   if (!activeTask?.columnId) return null;
 
   let destinationColumnId: Id<"boardColumns"> | null = null;
-  let overTaskId: Id<"tasks"> | null = null;
+  let overInstanceId: Id<"boardCardInstances"> | null = null;
 
   if (target.kind === "column") {
     destinationColumnId = target.columnId;
   } else {
-    const overTask = tasks.find((task) => task._id === target.taskId);
+    const overTask = tasks.find((task) => task.instanceId === target.instanceId);
     if (!overTask?.columnId) return null;
     destinationColumnId = overTask.columnId;
-    overTaskId = overTask._id;
+    overInstanceId = overTask.instanceId;
   }
 
   if (!destinationColumnId) return null;
@@ -194,7 +212,7 @@ function reorderBoardTasks(
   const sourceColumnId = activeTask.columnId;
   const sourceList = (map.get(sourceColumnId) ?? []).slice();
 
-  const sourceIndex = sourceList.findIndex((task) => task._id === activeTaskId);
+  const sourceIndex = sourceList.findIndex((task) => task.instanceId === activeInstanceId);
   if (sourceIndex < 0) return null;
 
   sourceList.splice(sourceIndex, 1);
@@ -205,8 +223,8 @@ function reorderBoardTasks(
     : (map.get(destinationColumnId) ?? []).slice();
 
   let targetIndex = destinationList.length;
-  if (overTaskId) {
-    const foundIndex = destinationList.findIndex((task) => task._id === overTaskId);
+  if (overInstanceId) {
+    const foundIndex = destinationList.findIndex((task) => task.instanceId === overInstanceId);
     if (foundIndex >= 0) targetIndex = foundIndex;
   }
 
@@ -222,26 +240,26 @@ function reorderBoardTasks(
     ? normalizedSource
     : normalizeOrders(destinationList, destinationColumnId);
 
-  const nextTaskById = new Map<Id<"tasks">, BoardTaskDoc>(tasks.map((task) => [task._id, task]));
+  const nextTaskById = new Map<Id<"boardCardInstances">, BoardTaskDoc>(tasks.map((task) => [task.instanceId, task]));
   for (const next of normalizedSource) {
-    nextTaskById.set(next._id, next);
+    nextTaskById.set(next.instanceId, next);
   }
   for (const next of normalizedDestination) {
-    nextTaskById.set(next._id, next);
+    nextTaskById.set(next.instanceId, next);
   }
 
-  const nextTasks = tasks.map((task) => nextTaskById.get(task._id) ?? task);
-  const updatesMap = new Map<Id<"tasks">, { taskId: Id<"tasks">; columnId: Id<"boardColumns">; order: number }>();
+  const nextTasks = tasks.map((task) => nextTaskById.get(task.instanceId) ?? task);
+  const updatesMap = new Map<Id<"boardCardInstances">, { instanceId: Id<"boardCardInstances">; columnId: Id<"boardColumns">; order: number }>();
 
   for (const next of [...normalizedSource, ...normalizedDestination]) {
-    const previous = tasks.find((task) => task._id === next._id);
+    const previous = tasks.find((task) => task.instanceId === next.instanceId);
     if (!previous?.columnId) continue;
     if (!next.columnId) continue;
     if ((previous.columnId ?? "") === (next.columnId ?? "") && (previous.order ?? 0) === (next.order ?? 0)) {
       continue;
     }
-    updatesMap.set(next._id, {
-      taskId: next._id,
+    updatesMap.set(next.instanceId, {
+      instanceId: next.instanceId,
       columnId: next.columnId,
       order: next.order ?? 0,
     });
@@ -254,11 +272,13 @@ function reorderBoardTasks(
 }
 
 export function useMissionsBoard() {
-  const boardData = useQuery(api.board.getBoardData);
+  const spaces = useQuery(api.board.listSpaces);
   const profiles = useQuery(api.profiles.listVisibleProfiles);
+  const directoryProfiles = useQuery(api.profiles.listDirectoryProfiles);
   const currentProfile = useQuery(api.profiles.getCurrentProfile);
 
-  const ensureDefaultColumns = useMutation(api.board.ensureDefaultColumns);
+  const ensureBoardSetup = useMutation(api.board.ensureBoardSetup);
+  const createSpace = useMutation(api.board.createSpace);
   const updateBoardColumn = useMutation(api.board.updateBoardColumn);
   const batchUpdateColumnOrders = useMutation(api.board.batchUpdateColumnOrders);
   const createBoardTask = useMutation(api.board.createBoardTask);
@@ -266,17 +286,52 @@ export function useMissionsBoard() {
   const updateBoardTaskDetails = useMutation(api.board.updateBoardTaskDetails);
   const addChecklistItem = useMutation(api.board.addChecklistItem);
   const toggleChecklistItem = useMutation(api.board.toggleChecklistItem);
+  const duplicateCard = useMutation(api.board.duplicateCard);
 
   const [taskFilter, setTaskFilter] = useState<BoardFilter>("all");
   const [searchValue, setSearchValue] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [selectedTaskId, setSelectedTaskId] = useState<Id<"tasks"> | null>(null);
-  const [activeTaskId, setActiveTaskId] = useState<Id<"tasks"> | null>(null);
+  const [activeTaskInstanceId, setActiveTaskInstanceId] = useState<Id<"boardCardInstances"> | null>(null);
   const [activeColumnId, setActiveColumnId] = useState<Id<"boardColumns"> | null>(null);
+  const [selectedSpaceId, setSelectedSpaceId] = useState<Id<"spaces"> | null>(null);
   const [optimisticColumns, setOptimisticColumns] = useState<BoardColumnDoc[] | null>(null);
   const [optimisticTasks, setOptimisticTasks] = useState<BoardTaskDoc[] | null>(null);
+  const [setupReady, setSetupReady] = useState(false);
 
-  const ensuredDefaultsRef = useRef(false);
+  const setupTriggeredRef = useRef(false);
+
+  useEffect(() => {
+    if (setupTriggeredRef.current) return;
+    setupTriggeredRef.current = true;
+    void ensureBoardSetup({})
+      .then(() => {
+        setSetupReady(true);
+      })
+      .catch((error) => {
+        const message = error instanceof Error ? error.message : "Impossible d'initialiser le board.";
+        toast.error(message);
+        setSetupReady(true);
+      });
+  }, [ensureBoardSetup]);
+
+  const typedSpaces = useMemo(() => (spaces ?? []) as BoardSpaceDoc[], [spaces]);
+
+  const activeSpaceId = useMemo(() => {
+    if (selectedSpaceId && typedSpaces.some((space) => space._id === selectedSpaceId)) {
+      return selectedSpaceId;
+    }
+    const personal = currentProfile
+      ? typedSpaces.find((space) => space.kind === "personal" && space.ownerId === currentProfile._id)
+      : null;
+    const team = typedSpaces.find((space) => space.kind === "team");
+    return personal?._id ?? team?._id ?? typedSpaces[0]?._id ?? null;
+  }, [currentProfile, selectedSpaceId, typedSpaces]);
+
+  const boardData = useQuery(
+    api.board.getBoardData,
+    activeSpaceId ? { spaceId: activeSpaceId } : "skip",
+  );
 
   const serverColumns = useMemo(
     () => (boardData?.columns ?? []).slice().sort(sortBoardColumns),
@@ -284,22 +339,9 @@ export function useMissionsBoard() {
   );
 
   const serverTasks = useMemo(
-    () => (boardData?.tasks ?? []).slice().sort(sortBoardTasks),
+    () => ((boardData?.tasks ?? []) as BoardTaskDoc[]).slice().sort(sortBoardTasks),
     [boardData?.tasks],
   );
-
-  useEffect(() => {
-    if (!boardData) return;
-    if (boardData.columns.length > 0) return;
-    if (ensuredDefaultsRef.current) return;
-
-    ensuredDefaultsRef.current = true;
-    void ensureDefaultColumns({}).catch((error) => {
-      ensuredDefaultsRef.current = false;
-      const message = error instanceof Error ? error.message : "Impossible d'initialiser les colonnes.";
-      toast.error(message);
-    });
-  }, [boardData, ensureDefaultColumns]);
 
   const columnsCaughtUp = useMemo(
     () => (optimisticColumns ? columnPositionsMatch(optimisticColumns, serverColumns) : false),
@@ -389,13 +431,13 @@ export function useMissionsBoard() {
   }, [columns, visibleTasks]);
 
   const selectedTask = useMemo(
-    () => allTasks.find((task) => task._id === selectedTaskId) ?? null,
+    () => allTasks.find((task) => task.cardId === selectedTaskId) ?? null,
     [allTasks, selectedTaskId],
   );
 
   const activeTask = useMemo(
-    () => allTasks.find((task) => task._id === activeTaskId) ?? null,
-    [activeTaskId, allTasks],
+    () => allTasks.find((task) => task.instanceId === activeTaskInstanceId) ?? null,
+    [activeTaskInstanceId, allTasks],
   );
 
   const activeColumn = useMemo(
@@ -413,7 +455,26 @@ export function useMissionsBoard() {
     setSelectedTags([]);
   }
 
+  async function createSpaceWithMembers(payload: CreateSpacePayload) {
+    try {
+      const created = await createSpace({
+        name: payload.name,
+        description: payload.description,
+        color: payload.color,
+        visibility: payload.visibility,
+        memberIds: payload.memberIds,
+      });
+      setSelectedSpaceId(created._id);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Impossible de créer l'espace.";
+      toast.error(message);
+      throw error;
+    }
+  }
+
   async function createCard(columnId: Id<"boardColumns">, title: string) {
+    if (!activeSpaceId) return;
+
     const cleanTitle = title.trim();
     if (!cleanTitle) return;
 
@@ -422,6 +483,7 @@ export function useMissionsBoard() {
 
     try {
       await createBoardTask({
+        spaceId: activeSpaceId,
         title: cleanTitle,
         columnId,
         order: maxOrder + 1000,
@@ -433,7 +495,7 @@ export function useMissionsBoard() {
   }
 
   async function saveTaskDetails(
-    taskId: Id<"tasks">,
+    cardId: Id<"tasks">,
     payload: {
       title: string;
       description: string | null;
@@ -444,9 +506,12 @@ export function useMissionsBoard() {
       tags: string[];
     },
   ) {
+    if (!activeSpaceId) return;
+
     try {
       await updateBoardTaskDetails({
-        taskId,
+        spaceId: activeSpaceId,
+        cardId,
         title: payload.title,
         description: payload.description,
         notes: payload.notes,
@@ -462,16 +527,19 @@ export function useMissionsBoard() {
     }
   }
 
-  async function renameTaskTitle(taskId: Id<"tasks">, title: string) {
+  async function renameTaskTitle(cardId: Id<"tasks">, title: string) {
+    if (!activeSpaceId) return;
+
     const cleanTitle = title.trim();
     if (!cleanTitle) return;
-    const task = allTasks.find((item) => item._id === taskId);
+    const task = allTasks.find((item) => item.cardId === cardId);
     if (!task) return;
     if (task.title === cleanTitle) return;
 
     try {
       await updateBoardTaskDetails({
-        taskId,
+        spaceId: activeSpaceId,
+        cardId,
         title: cleanTitle,
       });
     } catch (error) {
@@ -481,6 +549,8 @@ export function useMissionsBoard() {
   }
 
   async function renameColumn(columnId: Id<"boardColumns">, name: string) {
+    if (!activeSpaceId) return;
+
     const nextName = name.trim();
     if (!nextName) return;
     const column = columns.find((item) => item._id === columnId);
@@ -494,7 +564,7 @@ export function useMissionsBoard() {
     setOptimisticColumns(optimistic);
 
     try {
-      await updateBoardColumn({ columnId, name: nextName });
+      await updateBoardColumn({ spaceId: activeSpaceId, columnId, name: nextName });
     } catch (error) {
       setOptimisticColumns(snapshot);
       const message = error instanceof Error ? error.message : "Impossible de renommer la liste.";
@@ -507,13 +577,14 @@ export function useMissionsBoard() {
     updates: Array<{ columnId: Id<"boardColumns">; order: number }>,
     errorMessage: string,
   ) {
+    if (!activeSpaceId) return;
     if (updates.length === 0) return;
 
     const snapshot = columns;
     setOptimisticColumns(nextColumns);
 
     try {
-      await batchUpdateColumnOrders({ updates });
+      await batchUpdateColumnOrders({ spaceId: activeSpaceId, updates });
     } catch (error) {
       setOptimisticColumns(snapshot);
       const message = error instanceof Error ? error.message : errorMessage;
@@ -523,16 +594,17 @@ export function useMissionsBoard() {
 
   async function applyPositionUpdates(
     nextTasks: BoardTaskDoc[],
-    updates: Array<{ taskId: Id<"tasks">; columnId: Id<"boardColumns">; order: number }>,
+    updates: Array<{ instanceId: Id<"boardCardInstances">; columnId: Id<"boardColumns">; order: number }>,
     errorMessage: string,
   ) {
+    if (!activeSpaceId) return;
     if (updates.length === 0) return;
 
     const snapshot = allTasks;
     setOptimisticTasks(nextTasks);
 
     try {
-      await batchUpdatePositions({ updates });
+      await batchUpdatePositions({ spaceId: activeSpaceId, updates });
     } catch (error) {
       setOptimisticTasks(snapshot);
       const message = error instanceof Error ? error.message : errorMessage;
@@ -588,24 +660,24 @@ export function useMissionsBoard() {
 
     const updates = normalized
       .map((task) => ({
-        taskId: task._id,
+        instanceId: task.instanceId,
         columnId,
         order: task.order ?? 0,
       }))
       .filter((update) => {
-        const current = allTasks.find((task) => task._id === update.taskId);
+        const current = allTasks.find((task) => task.instanceId === update.instanceId);
         return !!current && (current.order ?? 0) !== update.order;
       });
 
     if (updates.length === 0) return;
 
-    const byId = new Map(allTasks.map((task) => [task._id, task]));
+    const byId = new Map(allTasks.map((task) => [task.instanceId, task]));
     for (const update of updates) {
-      const task = byId.get(update.taskId);
+      const task = byId.get(update.instanceId);
       if (!task) continue;
-      byId.set(update.taskId, { ...task, order: update.order });
+      byId.set(update.instanceId, { ...task, order: update.order });
     }
-    const nextTasks = allTasks.map((task) => byId.get(task._id) ?? task);
+    const nextTasks = allTasks.map((task) => byId.get(task.instanceId) ?? task);
 
     await applyPositionUpdates(nextTasks, updates, "Impossible de trier la colonne.");
   }
@@ -629,22 +701,22 @@ export function useMissionsBoard() {
     const maxTargetOrder = targetTasks.reduce((max, task) => Math.max(max, task.order ?? 0), 0);
 
     const updates = sourceTasks.map((task, index) => ({
-      taskId: task._id,
+      instanceId: task.instanceId,
       columnId: targetColumnId,
       order: maxTargetOrder + (index + 1) * 1000,
     }));
 
-    const nextById = new Map(allTasks.map((task) => [task._id, task]));
+    const nextById = new Map(allTasks.map((task) => [task.instanceId, task]));
     for (const update of updates) {
-      const task = nextById.get(update.taskId);
+      const task = nextById.get(update.instanceId);
       if (!task) continue;
-      nextById.set(update.taskId, {
+      nextById.set(update.instanceId, {
         ...task,
         columnId: update.columnId,
         order: update.order,
       });
     }
-    const nextTasks = allTasks.map((task) => nextById.get(task._id) ?? task);
+    const nextTasks = allTasks.map((task) => nextById.get(task.instanceId) ?? task);
 
     await applyPositionUpdates(nextTasks, updates, "Impossible de déplacer les cartes de la liste.");
   }
@@ -658,9 +730,11 @@ export function useMissionsBoard() {
     await moveAllCardsToColumn(columnId, doneColumn._id);
   }
 
-  async function createChecklistItem(taskId: Id<"tasks">, text: string) {
+  async function createChecklistItem(cardId: Id<"tasks">, text: string) {
+    if (!activeSpaceId) return;
+
     try {
-      await addChecklistItem({ taskId, text });
+      await addChecklistItem({ spaceId: activeSpaceId, cardId, text });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Impossible d'ajouter l'item checklist.";
       toast.error(message);
@@ -668,9 +742,11 @@ export function useMissionsBoard() {
     }
   }
 
-  async function toggleChecklist(taskId: Id<"tasks">, itemId: string) {
+  async function toggleChecklist(cardId: Id<"tasks">, itemId: string) {
+    if (!activeSpaceId) return;
+
     try {
-      await toggleChecklistItem({ taskId, itemId });
+      await toggleChecklistItem({ spaceId: activeSpaceId, cardId, itemId });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Impossible de modifier la checklist.";
       toast.error(message);
@@ -678,14 +754,32 @@ export function useMissionsBoard() {
     }
   }
 
+  async function duplicateBoardCard(cardId: Id<"tasks">, targetSpaceId: Id<"spaces">, syncWithOriginal: boolean) {
+    if (!activeSpaceId) return;
+
+    try {
+      await duplicateCard({
+        sourceSpaceId: activeSpaceId,
+        targetSpaceId,
+        cardId,
+        syncWithOriginal,
+      });
+      toast.success(syncWithOriginal ? "Carte synchronisée vers le nouvel espace." : "Copie indépendante créée.");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Impossible de dupliquer la carte.";
+      toast.error(message);
+      throw error;
+    }
+  }
+
   function handleDragStart(event: DragStartEvent) {
     const data = event.active.data.current as
-      | { type?: "task"; taskId?: Id<"tasks"> }
+      | { type?: "task"; instanceId?: Id<"boardCardInstances"> }
       | { type?: "board-column"; columnId?: Id<"boardColumns"> }
       | undefined;
 
     if (data?.type === "task") {
-      setActiveTaskId(data.taskId ?? (event.active.id as Id<"tasks">));
+      setActiveTaskInstanceId(data.instanceId ?? (event.active.id as Id<"boardCardInstances">));
       setActiveColumnId(null);
       return;
     }
@@ -695,21 +789,21 @@ export function useMissionsBoard() {
         data.columnId ??
         (String(event.active.id).replace("board-column:", "") as Id<"boardColumns">);
       setActiveColumnId(resolvedId);
-      setActiveTaskId(null);
+      setActiveTaskInstanceId(null);
     }
   }
 
   function handleDragCancel() {
-    setActiveTaskId(null);
+    setActiveTaskInstanceId(null);
     setActiveColumnId(null);
   }
 
   async function handleDragEnd(event: DragEndEvent) {
     const activeData = event.active.data.current as
-      | { type?: "task"; taskId?: Id<"tasks"> }
+      | { type?: "task"; instanceId?: Id<"boardCardInstances"> }
       | { type?: "board-column"; columnId?: Id<"boardColumns"> }
       | undefined;
-    setActiveTaskId(null);
+    setActiveTaskInstanceId(null);
     setActiveColumnId(null);
 
     if (!event.over) return;
@@ -726,7 +820,7 @@ export function useMissionsBoard() {
 
     if (activeData?.type !== "task") return;
 
-    const activeId = activeData.taskId ?? (event.active.id as Id<"tasks">);
+    const activeId = activeData.instanceId ?? (event.active.id as Id<"boardCardInstances">);
     const target = resolveDropTarget(event.over);
     if (!target) return;
 
@@ -736,8 +830,10 @@ export function useMissionsBoard() {
     const snapshot = allTasks;
     setOptimisticTasks(result.nextTasks);
 
+    if (!activeSpaceId) return;
+
     try {
-      await batchUpdatePositions({ updates: result.updates });
+      await batchUpdatePositions({ spaceId: activeSpaceId, updates: result.updates });
     } catch (error) {
       setOptimisticTasks(snapshot);
       const message = error instanceof Error ? error.message : "Impossible d'enregistrer le déplacement.";
@@ -746,7 +842,15 @@ export function useMissionsBoard() {
   }
 
   return {
-    isLoading: boardData === undefined || profiles === undefined,
+    isLoading:
+      !setupReady ||
+      spaces === undefined ||
+      profiles === undefined ||
+      directoryProfiles === undefined ||
+      (activeSpaceId ? boardData === undefined : true),
+    spaces: typedSpaces,
+    selectedSpaceId: activeSpaceId,
+    setSelectedSpaceId,
     columns,
     tasksByColumn,
     allTasks,
@@ -765,7 +869,9 @@ export function useMissionsBoard() {
     activeColumn,
     currentProfile,
     profiles: profiles ?? [],
+    directoryProfiles: directoryProfiles ?? [],
     profileById,
+    createSpaceWithMembers,
     createCard,
     saveTaskDetails,
     renameTaskTitle,
@@ -775,6 +881,7 @@ export function useMissionsBoard() {
     archiveColumnCards,
     createChecklistItem,
     toggleChecklist,
+    duplicateBoardCard,
     handleDragStart,
     handleDragCancel,
     handleDragEnd,

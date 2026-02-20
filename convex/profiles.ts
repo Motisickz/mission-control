@@ -3,6 +3,7 @@ import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import { requireProfile } from "./lib/auth";
 import { getAccessProfileIds } from "./lib/sharedProfiles";
+import { ensureDefaultColumnsForSpace, ensurePersonalSpace, ensureTeamSpace } from "./lib/boardSpaces";
 
 const SHARED_CONTACT_IDENTIFIER = "contact@hedayatmusic.com";
 const SHARED_CONTACT_PERSONA_NAMES: Record<string, string> = {
@@ -88,8 +89,18 @@ export const ensureCurrentProfile = mutation({
           displayName: nextDisplayName,
         });
         const patched = await ctx.db.get(existing._id);
-        if (patched) return patched;
+        if (patched) {
+          const teamSpace = await ensureTeamSpace(ctx, patched._id);
+          const personalSpace = await ensurePersonalSpace(ctx, patched._id, patched.displayName);
+          await ensureDefaultColumnsForSpace(ctx, teamSpace._id);
+          await ensureDefaultColumnsForSpace(ctx, personalSpace._id);
+          return patched;
+        }
       }
+      const teamSpace = await ensureTeamSpace(ctx, existing._id);
+      const personalSpace = await ensurePersonalSpace(ctx, existing._id, existing.displayName);
+      await ensureDefaultColumnsForSpace(ctx, teamSpace._id);
+      await ensureDefaultColumnsForSpace(ctx, personalSpace._id);
       return existing;
     }
 
@@ -108,7 +119,13 @@ export const ensureCurrentProfile = mutation({
           await ctx.db.patch(existingSharedProfile._id, { authUserId: userId });
         }
         const patched = await ctx.db.get(existingSharedProfile._id);
-        if (patched) return patched;
+        if (patched) {
+          const teamSpace = await ensureTeamSpace(ctx, patched._id);
+          const personalSpace = await ensurePersonalSpace(ctx, patched._id, patched.displayName);
+          await ensureDefaultColumnsForSpace(ctx, teamSpace._id);
+          await ensureDefaultColumnsForSpace(ctx, personalSpace._id);
+          return patched;
+        }
       }
     }
 
@@ -127,7 +144,15 @@ export const ensureCurrentProfile = mutation({
       timezone: "Europe/Paris",
     });
 
-    return await ctx.db.get(profileId);
+    const created = await ctx.db.get(profileId);
+    if (!created) {
+      throw new Error("Profil introuvable après création");
+    }
+    const teamSpace = await ensureTeamSpace(ctx, created._id);
+    const personalSpace = await ensurePersonalSpace(ctx, created._id, created.displayName);
+    await ensureDefaultColumnsForSpace(ctx, teamSpace._id);
+    await ensureDefaultColumnsForSpace(ctx, personalSpace._id);
+    return created;
   },
 });
 

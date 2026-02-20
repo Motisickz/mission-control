@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { CalendarClock, ListChecks, Tag } from "lucide-react";
+import { CalendarClock, Copy, ListChecks, Tag } from "lucide-react";
 import type { Id } from "../../../../convex/_generated/dataModel";
 
 import type { BoardProfileDoc, BoardTaskDoc } from "./board-types";
@@ -26,7 +26,7 @@ type CardDetailDrawerProps = {
   task: BoardTaskDoc | null;
   profiles: BoardProfileDoc[];
   onSave: (
-    taskId: Id<"tasks">,
+    cardId: Id<"tasks">,
     payload: {
       title: string;
       description: string | null;
@@ -37,8 +37,9 @@ type CardDetailDrawerProps = {
       tags: string[];
     },
   ) => Promise<void>;
-  onToggleChecklist: (taskId: Id<"tasks">, itemId: string) => Promise<void>;
-  onAddChecklistItem: (taskId: Id<"tasks">, text: string) => Promise<void>;
+  onToggleChecklist: (cardId: Id<"tasks">, itemId: string) => Promise<void>;
+  onAddChecklistItem: (cardId: Id<"tasks">, text: string) => Promise<void>;
+  onDuplicateRequest: (cardId: Id<"tasks">) => void;
 };
 
 type DescriptionChecklistLine = {
@@ -90,6 +91,7 @@ export function CardDetailDrawer({
   onSave,
   onToggleChecklist,
   onAddChecklistItem,
+  onDuplicateRequest,
 }: CardDetailDrawerProps) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -160,6 +162,12 @@ export function CardDetailDrawer({
         <SheetHeader className="border-b border-border/70">
           <SheetTitle>Détail carte</SheetTitle>
           <SheetDescription>Édition rapide du contenu, checklist et metadata.</SheetDescription>
+          <div>
+            <Button type="button" variant="outline" size="sm" onClick={() => onDuplicateRequest(task.cardId)}>
+              <Copy className="h-4 w-4" />
+              Dupliquer
+            </Button>
+          </div>
         </SheetHeader>
 
         <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-4">
@@ -337,7 +345,7 @@ export function CardDetailDrawer({
                         if (checklistBusy) return;
                         setChecklistBusy(true);
                         try {
-                          await onToggleChecklist(task._id, item.id);
+                          await onToggleChecklist(task.cardId, item.id);
                         } finally {
                           setChecklistBusy(false);
                         }
@@ -357,7 +365,7 @@ export function CardDetailDrawer({
                 if (!value || checklistBusy) return;
                 setChecklistBusy(true);
                 try {
-                  await onAddChecklistItem(task._id, value);
+                  await onAddChecklistItem(task.cardId, value);
                   setChecklistInput("");
                 } finally {
                   setChecklistBusy(false);
@@ -388,7 +396,7 @@ export function CardDetailDrawer({
             onClick={async () => {
               setSaving(true);
               try {
-                await onSave(task._id, {
+                await onSave(task.cardId, {
                   title: title.trim(),
                   description: description.trim() ? description.trim() : null,
                   notes: notes.trim() ? notes.trim() : null,
@@ -397,6 +405,7 @@ export function CardDetailDrawer({
                   assigneeProfileIds: assigneeIds.length > 0 ? assigneeIds : [task.assigneeProfileId],
                   tags,
                 });
+                onOpenChange(false);
               } finally {
                 setSaving(false);
               }

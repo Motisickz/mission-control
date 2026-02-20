@@ -31,6 +31,7 @@ type BoardColumnProps = {
   onOpenTask: (taskId: Id<"tasks">) => void;
   onCreateCard: (columnId: Id<"boardColumns">, title: string) => Promise<void> | void;
   onRenameCard: (taskId: Id<"tasks">, title: string) => Promise<void>;
+  onDuplicateCard: (taskId: Id<"tasks">) => void;
   onRenameColumn: (columnId: Id<"boardColumns">, name: string) => Promise<void>;
   onSortCards: (columnId: Id<"boardColumns">, mode: "priority" | "dueDate" | "title") => Promise<void>;
   onMoveAllCards: (sourceColumnId: Id<"boardColumns">, targetColumnId: Id<"boardColumns">) => Promise<void>;
@@ -45,6 +46,7 @@ export function BoardColumn({
   onOpenTask,
   onCreateCard,
   onRenameCard,
+  onDuplicateCard,
   onRenameColumn,
   onSortCards,
   onMoveAllCards,
@@ -256,14 +258,15 @@ export function BoardColumn({
           hideClosedTrigger
         />
 
-        <SortableContext items={tasks.map((task) => task._id)} strategy={verticalListSortingStrategy}>
+        <SortableContext items={tasks.map((task) => task.instanceId)} strategy={verticalListSortingStrategy}>
           {tasks.map((task) => (
             <BoardCard
-              key={task._id}
+              key={task.instanceId}
               task={task}
               profileById={profileById}
               onOpen={onOpenTask}
               onRename={onRenameCard}
+              onDuplicate={onDuplicateCard}
             />
           ))}
         </SortableContext>

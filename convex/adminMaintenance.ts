@@ -1,4 +1,4 @@
-import { internalMutation, type MutationCtx } from "./_generated/server";
+import { internalMutation, internalQuery, type MutationCtx } from "./_generated/server";
 import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
 
@@ -14,7 +14,10 @@ const APP_TABLES_TO_WIPE = [
   "missedCalls",
   "showNoShow",
   "tasks",
+  "boardCardInstances",
   "boardColumns",
+  "spaceMembers",
+  "spaces",
   "taskTemplates",
   "calendarFilters",
 ] as const;
@@ -215,5 +218,15 @@ export const migrateSuggestionModelName = internalMutation({
     }
 
     return { scanned, updated, fromModel, toModel };
+  },
+});
+
+export const listPasswordAccountIdentifiers = internalQuery({
+  args: {},
+  handler: async (ctx) => {
+    const authAccounts = await ctx.db.query("authAccounts").collect();
+    return authAccounts
+      .filter((account) => account.provider === "password")
+      .map((account) => account.providerAccountId);
   },
 });

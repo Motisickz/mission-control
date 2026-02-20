@@ -11,6 +11,7 @@ type ColumnListProps = {
   onOpenTask: (taskId: Id<"tasks">) => void;
   onCreateCard: (columnId: Id<"boardColumns">, title: string) => Promise<void> | void;
   onRenameCard: (taskId: Id<"tasks">, title: string) => Promise<void>;
+  onDuplicateCard: (taskId: Id<"tasks">) => void;
   onRenameColumn: (columnId: Id<"boardColumns">, name: string) => Promise<void>;
   onSortCards: (columnId: Id<"boardColumns">, mode: "priority" | "dueDate" | "title") => Promise<void>;
   onMoveAllCards: (sourceColumnId: Id<"boardColumns">, targetColumnId: Id<"boardColumns">) => Promise<void>;
@@ -24,6 +25,7 @@ export function ColumnList({
   onOpenTask,
   onCreateCard,
   onRenameCard,
+  onDuplicateCard,
   onRenameColumn,
   onSortCards,
   onMoveAllCards,
@@ -54,6 +56,7 @@ export function ColumnList({
               onOpenTask={onOpenTask}
               onCreateCard={onCreateCard}
               onRenameCard={onRenameCard}
+              onDuplicateCard={onDuplicateCard}
               onRenameColumn={onRenameColumn}
               onSortCards={onSortCards}
               onMoveAllCards={onMoveAllCards}

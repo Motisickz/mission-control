@@ -10,15 +10,19 @@ import {
   useSensors,
 } from "@dnd-kit/core";
 import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
+import { useState } from "react";
+import type { Id } from "../../../convex/_generated/dataModel";
 
 import { BoardHeader } from "@/features/missions/board/board-header";
 import { CardDetailDrawer } from "@/features/missions/board/card-detail-drawer";
 import { ColumnList } from "@/features/missions/board/column-list";
+import { DuplicateCardDialog } from "@/features/missions/board/duplicate-card-dialog";
 import { useMissionsBoard } from "@/features/missions/board/use-missions-board";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 export function MissionsBoardView() {
   const board = useMissionsBoard();
+  const [duplicateCardId, setDuplicateCardId] = useState<Id<"tasks"> | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -58,6 +62,11 @@ export function MissionsBoardView() {
         </CardHeader>
         <CardContent className="space-y-4">
           <BoardHeader
+            spaces={board.spaces}
+            selectedSpaceId={board.selectedSpaceId}
+            onSpaceChange={board.setSelectedSpaceId}
+            directoryProfiles={board.directoryProfiles}
+            onCreateSpace={board.createSpaceWithMembers}
             taskFilter={board.taskFilter}
             onTaskFilterChange={board.setTaskFilter}
             searchValue={board.searchValue}
@@ -82,6 +91,7 @@ export function MissionsBoardView() {
               onOpenTask={board.setSelectedTaskId}
               onCreateCard={board.createCard}
               onRenameCard={board.renameTaskTitle}
+              onDuplicateCard={setDuplicateCardId}
               onRenameColumn={board.renameColumn}
               onSortCards={board.sortColumnCards}
               onMoveAllCards={board.moveAllCardsToColumn}
@@ -113,6 +123,20 @@ export function MissionsBoardView() {
         onSave={board.saveTaskDetails}
         onToggleChecklist={board.toggleChecklist}
         onAddChecklistItem={board.createChecklistItem}
+        onDuplicateRequest={setDuplicateCardId}
+      />
+
+      <DuplicateCardDialog
+        open={!!duplicateCardId}
+        onOpenChange={(open) => {
+          if (!open) setDuplicateCardId(null);
+        }}
+        spaces={board.spaces}
+        currentSpaceId={board.selectedSpaceId}
+        onConfirm={async (targetSpaceId, syncWithOriginal) => {
+          if (!duplicateCardId) return;
+          await board.duplicateBoardCard(duplicateCardId, targetSpaceId, syncWithOriginal);
+        }}
       />
     </div>
   );

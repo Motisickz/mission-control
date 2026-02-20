@@ -49,10 +49,36 @@ export default defineSchema({
     .index("by_assignee", ["assigneeProfileId"])
     .index("by_creator", ["createdByProfileId"]),
 
+  spaces: defineTable({
+    name: v.string(),
+    description: v.optional(v.string()),
+    color: v.optional(v.string()),
+    visibility: v.union(v.literal("private"), v.literal("shared")),
+    kind: v.union(v.literal("personal"), v.literal("team"), v.literal("custom")),
+    ownerId: v.id("profiles"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_owner", ["ownerId"])
+    .index("by_owner_kind", ["ownerId", "kind"])
+    .index("by_kind", ["kind"]),
+
+  spaceMembers: defineTable({
+    spaceId: v.id("spaces"),
+    userId: v.id("profiles"),
+    roleInSpace: v.union(v.literal("owner"), v.literal("member")),
+    createdAt: v.number(),
+  })
+    .index("by_space", ["spaceId"])
+    .index("by_user_space", ["userId", "spaceId"]),
+
   boardColumns: defineTable({
+    spaceId: v.optional(v.id("spaces")),
     name: v.string(),
     order: v.number(),
-  }).index("by_order", ["order"]),
+  })
+    .index("by_order", ["order"])
+    .index("by_space_order", ["spaceId", "order"]),
 
   tasks: defineTable({
     title: v.string(),
@@ -80,6 +106,7 @@ export default defineSchema({
     assigneeProfileIds: v.optional(v.array(v.id("profiles"))),
     columnId: v.optional(v.id("boardColumns")),
     order: v.optional(v.number()),
+    boardCard: v.optional(v.boolean()),
     tags: v.optional(v.array(v.string())),
     createdByProfileId: v.id("profiles"),
     createdAt: v.optional(v.number()),
@@ -113,6 +140,18 @@ export default defineSchema({
     .index("by_date", ["date"])
     .index("by_assignee_date", ["assigneeProfileId", "date"])
     .index("by_period", ["period"]),
+
+  boardCardInstances: defineTable({
+    spaceId: v.id("spaces"),
+    cardId: v.id("tasks"),
+    columnId: v.id("boardColumns"),
+    order: v.number(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_space_order", ["spaceId", "columnId", "order"])
+    .index("by_space_card", ["spaceId", "cardId"])
+    .index("by_card", ["cardId"]),
 
   ideas: defineTable({
     title: v.string(),

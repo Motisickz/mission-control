@@ -5,6 +5,7 @@ import {
   modifyAccountCredentials,
   retrieveAccount,
 } from "@convex-dev/auth/server";
+import { internal } from "./_generated/api";
 
 function normalizeIdentifier(identifier: string) {
   return identifier.trim().toLowerCase();
@@ -44,5 +45,39 @@ export const resetPasswordForEmail = internalAction({
     }
 
     return { identifier, userId: user._id };
+  },
+});
+
+export const emergencyResetAllPasswordAccounts = internalAction({
+  args: {
+    newPassword: v.string(),
+    confirm: v.string(),
+    invalidateExistingSessions: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    if (args.confirm !== "RESET_ALL_PASSWORDS") {
+      throw new Error('Confirmation invalide. Utilise "RESET_ALL_PASSWORDS".');
+    }
+    if (!args.newPassword || args.newPassword.length < 8) {
+      throw new Error("Le mot de passe doit contenir au moins 8 caractères.");
+    }
+
+    const identifiers = await ctx.runQuery(internal.adminMaintenance.listPasswordAccountIdentifiers, {});
+    const uniqueIdentifiers = [...new Set(identifiers)];
+    const resetResults: Array<{ identifier: string; userId: string }> = [];
+
+    for (const identifier of uniqueIdentifiers) {
+      const result = await ctx.runAction(internal.adminAuth.resetPasswordForEmail, {
+        identifier,
+        newPassword: args.newPassword,
+        invalidateExistingSessions: args.invalidateExistingSessions ?? true,
+      });
+      resetResults.push(result);
+    }
+
+    return {
+      updated: resetResults.length,
+      updatedAccountIds: resetResults.map((item) => item.identifier),
+    };
   },
 });

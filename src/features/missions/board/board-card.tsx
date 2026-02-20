@@ -1,4 +1,4 @@
-import { CalendarClock, ListChecks, MessageSquareText } from "lucide-react";
+import { CalendarClock, Copy, ListChecks, MessageSquareText } from "lucide-react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type { Id } from "../../../../convex/_generated/dataModel";
@@ -14,8 +14,9 @@ import { Input } from "@/components/ui/input";
 type BoardCardProps = {
   task: BoardTaskDoc;
   profileById: Map<Id<"profiles">, BoardProfileDoc>;
-  onOpen: (taskId: Id<"tasks">) => void;
-  onRename: (taskId: Id<"tasks">, title: string) => Promise<void>;
+  onOpen: (cardId: Id<"tasks">) => void;
+  onRename: (cardId: Id<"tasks">, title: string) => Promise<void>;
+  onDuplicate: (cardId: Id<"tasks">) => void;
 };
 
 const PRIORITY_STYLES: Record<BoardTaskDoc["priority"], string> = {
@@ -32,7 +33,7 @@ const PRIORITY_LABELS: Record<BoardTaskDoc["priority"], string> = {
   low: "Faible",
 };
 
-export function BoardCard({ task, profileById, onOpen, onRename }: BoardCardProps) {
+export function BoardCard({ task, profileById, onOpen, onRename, onDuplicate }: BoardCardProps) {
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState(task.title);
   const [renaming, setRenaming] = useState(false);
@@ -45,11 +46,11 @@ export function BoardCard({ task, profileById, onOpen, onRename }: BoardCardProp
     transition,
     isDragging,
   } = useSortable({
-    id: task._id,
+    id: task.instanceId,
     disabled: editingTitle || renaming,
     data: {
       type: "task",
-      taskId: task._id,
+      instanceId: task.instanceId,
       columnId: task.columnId,
     },
   });
@@ -90,7 +91,7 @@ export function BoardCard({ task, profileById, onOpen, onRename }: BoardCardProp
 
     setRenaming(true);
     try {
-      await onRename(task._id, nextTitle);
+      await onRename(task.cardId, nextTitle);
       setEditingTitle(false);
     } finally {
       setRenaming(false);
@@ -105,7 +106,7 @@ export function BoardCard({ task, profileById, onOpen, onRename }: BoardCardProp
       {...listeners}
       onClick={() => {
         if (!editingTitle && !renaming) {
-          onOpen(task._id);
+          onOpen(task.cardId);
         }
       }}
       role="button"
@@ -114,7 +115,7 @@ export function BoardCard({ task, profileById, onOpen, onRename }: BoardCardProp
         if (editingTitle) return;
         if (event.key === "Enter" || event.key === " ") {
           event.preventDefault();
-          onOpen(task._id);
+          onOpen(task.cardId);
         }
       }}
       className={cn(
@@ -159,19 +160,33 @@ export function BoardCard({ task, profileById, onOpen, onRename }: BoardCardProp
           )}
 
           {!editingTitle ? (
-            <button
-              type="button"
-              className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-              title="Renommer la carte"
-              onPointerDown={(event) => event.stopPropagation()}
-              onClick={(event) => {
-                event.stopPropagation();
-                setTitleDraft(task.title);
-                setEditingTitle(true);
-              }}
-            >
-              <Edit3 className="h-3.5 w-3.5" />
-            </button>
+            <div className="inline-flex items-center gap-1">
+              <button
+                type="button"
+                className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                title="Dupliquer la carte"
+                onPointerDown={(event) => event.stopPropagation()}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onDuplicate(task.cardId);
+                }}
+              >
+                <Copy className="h-3.5 w-3.5" />
+              </button>
+              <button
+                type="button"
+                className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                title="Renommer la carte"
+                onPointerDown={(event) => event.stopPropagation()}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setTitleDraft(task.title);
+                  setEditingTitle(true);
+                }}
+              >
+                <Edit3 className="h-3.5 w-3.5" />
+              </button>
+            </div>
           ) : null}
         </div>
 
